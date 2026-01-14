@@ -1,15 +1,7 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
-import * as schema from "@shared/schema";
-
-neonConfig.webSocketConstructor = ws;
-
-if (!process.env.DATABASE_URL) {
+// Postgres DB initializer removed — using Firestore instead.
+// This file remains for compatibility but will throw if imported.
+export function deprecatedDbImport() {
   throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+    "Postgres DB is no longer used. Migrate imports to Firestore-based storage (server/storage.ts).",
   );
 }
-
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });

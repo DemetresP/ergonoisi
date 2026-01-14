@@ -1,20 +1,17 @@
+import admin from "./firebaseAdmin";
 import {
-  users,
-  tasks,
   type User,
   type UpsertUser,
   type Task,
   type InsertTask,
 } from "@shared/schema";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
+
+const db = admin.firestore();
 
 export interface IStorage {
-  // User operations - Required for Replit Auth
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  
-  // Task operations - Team-wide visibility (no userId filtering)
+
   getTasks(): Promise<Task[]>;
   getTask(id: string): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
@@ -22,88 +19,65 @@ export interface IStorage {
   deleteTask(id: string): Promise<boolean>;
 }
 
-export class DatabaseStorage implements IStorage {
-  // User operations
+function toPlain<T = any>(doc: FirebaseFirestore.DocumentSnapshot<FirebaseFirestore.DocumentData>) {
+  if (!doc.exists) return undefined;
+  const data = doc.data() as any;
+  Object.keys(data).forEach((k) => {
+    const v = data[k];
+    if (v && typeof v.toDate === "function") {
+      data[k] = v.toISOString ? v.toISOString() : v.toDate().toISOString();
+    }
+  });
+  return { id: doc.id, ...data } as T;
+}
+
+export class FirestoreStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    const doc = await db.collection("users").doc(id).get();
+    return toPlain<User>(doc);
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    try {
-      const [user] = await db
-        .insert(users)
-        .values(userData)
-        .onConflictDoUpdate({
-          target: users.id,
-          set: {
-            ...userData,
-            updatedAt: new Date(),
-          },
-        })
-        .returning();
-      return user;
-    } catch (error: any) {
-      if (error.code === '23505' && error.constraint === 'users_email_unique') {
-        // Don't update ID to avoid breaking foreign key constraints
-        const { id, ...updateData } = userData;
-        const [existingUser] = await db
-          .update(users)
-          .set({
-            ...updateData,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.email, userData.email!))
-          .returning();
-        return existingUser;
-      }
-      throw error;
-    }
+    const id = (userData as any).id;
+    const ref = id ? db.collection("users").doc(id) : db.collection("users").doc();
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    await ref.set({ ...userData, updatedAt: now, createdAt: now }, { merge: true });
+    const saved = await ref.get();
+    return toPlain<User>(saved)!;
   }
 
-  // Task operations - Team-wide visibility
   async getTasks(): Promise<Task[]> {
-    return await db
-      .select()
-      .from(tasks)
-      .orderBy(tasks.createdAt);
+    const snap = await db.collection("tasks").orderBy("createdAt").get();
+    return snap.docs.map((d) => toPlain<Task>(d)!).filter(Boolean);
   }
 
   async getTask(id: string): Promise<Task | undefined> {
-    const [task] = await db
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, id));
-    return task;
+    const doc = await db.collection("tasks").doc(id).get();
+    return toPlain<Task>(doc);
   }
 
   async createTask(taskData: InsertTask): Promise<Task> {
-    const [task] = await db
-      .insert(tasks)
-      .values(taskData)
-      .returning();
-    return task;
+    const ref = db.collection("tasks").doc();
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    await ref.set({ ...taskData, createdAt: now, updatedAt: now });
+    const saved = await ref.get();
+    return toPlain<Task>(saved)!;
   }
 
   async updateTask(id: string, updates: Partial<Task>): Promise<Task | undefined> {
-    const [task] = await db
-      .update(tasks)
-      .set({
-        ...updates,
-        updatedAt: new Date(),
-      })
-      .where(eq(tasks.id, id))
-      .returning();
-    return task;
+    const ref = db.collection("tasks").doc(id);
+    await ref.update({ ...updates, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    const updated = await ref.get();
+    return toPlain<Task>(updated);
   }
 
   async deleteTask(id: string): Promise<boolean> {
-    const result = await db
-      .delete(tasks)
-      .where(eq(tasks.id, id))
-      .returning();
-    return result.length > 0;
+    const ref = db.collection("tasks").doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) return false;
+    await ref.delete();
+    return true;
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new FirestoreStorage();

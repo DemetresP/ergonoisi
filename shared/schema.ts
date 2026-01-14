@@ -1,64 +1,29 @@
-import { sql } from 'drizzle-orm';
-import {
-  index,
-  jsonb,
-  pgTable,
-  timestamp,
-  varchar,
-  integer,
-  text,
-} from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Session storage table - Required for Replit Auth
-export const sessions = pgTable(
-  "sessions",
-  {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
-  },
-  (table) => [index("IDX_session_expire").on(table.expire)],
-);
+// Plain Zod-based schema and TS types — removed Postgres/Drizzle-specific bindings
 
-// User storage table - Required for Replit Auth
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const userSchema = z.object({
+  id: z.string(),
+  email: z.string().email().optional(),
+  firstName: z.string().nullable().optional(),
+  lastName: z.string().nullable().optional(),
+  profileImageUrl: z.string().nullable().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
-export type UpsertUser = typeof users.$inferInsert;
-export type User = typeof users.$inferSelect;
-
-// Tasks table for video production scheduling
-export const tasks = pgTable("tasks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: text("title").notNull(),
-  shootDate: varchar("shoot_date"),
-  shootTime: varchar("shoot_time"),
-  deliveryDate: varchar("delivery_date"),
-  deliveryTime: varchar("delivery_time"),
-  notes: text("notes"),
-  assignee: text("assignee"),
-  workType: varchar("work_type", { length: 20 }).notNull().default('shoot'),
-  status: varchar("status", { length: 20 }).notNull().default('todo'),
-  tag: varchar("tag", { length: 20 }).notNull().default('tlife'),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const upsertUserSchema = z.object({
+  id: z.string().optional(),
+  email: z.string().email().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  profileImageUrl: z.string().optional(),
 });
 
-export const insertTaskSchema = createInsertSchema(tasks).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
+export type UpsertUser = z.infer<typeof upsertUserSchema>;
+export type User = z.infer<typeof userSchema>;
+
+export const insertTaskSchema = z.object({
   title: z.string().min(1, "Project title is required"),
   shootDate: z.string().nullable().optional(),
   shootTime: z.string().nullable().optional(),
@@ -66,10 +31,18 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   deliveryTime: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   assignee: z.string().min(1).optional(),
-  workType: z.enum(['shoot', 'edit', 'upload']).default('shoot'),
-  status: z.enum(['todo', 'inprogress', 'done']).default('todo'),
-  tag: z.enum(['newsit', 'tlife', 'zappit']).default('tlife'),
+  workType: z.enum(["shoot", "edit", "upload"]).default("shoot"),
+  status: z.enum(["todo", "inprogress", "done"]).default("todo"),
+  tag: z.enum(["newsit", "tlife", "zappit"]).default("tlife"),
+  userId: z.string(),
 });
 
 export type InsertTask = z.infer<typeof insertTaskSchema>;
-export type Task = typeof tasks.$inferSelect;
+
+export const taskSchema = insertTaskSchema.extend({
+  id: z.string(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export type Task = z.infer<typeof taskSchema>;
