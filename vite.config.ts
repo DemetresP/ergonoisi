@@ -30,6 +30,46 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Keep chunking stable across OS path separators.
+          const inNodeModules = /[\\/]node_modules[\\/]/.test(id);
+          if (!inNodeModules) return;
+
+          if (/[\\/]node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/.test(id)) {
+            return "react-vendor";
+          }
+
+          if (
+            /[\\/]node_modules[\\/]@radix-ui[\\/]/.test(id) ||
+            /[\\/]node_modules[\\/](cmdk|vaul|lucide-react|framer-motion|class-variance-authority|clsx)[\\/]/.test(id)
+          ) {
+            return "ui-vendor";
+          }
+
+          if (
+            /[\\/]node_modules[\\/]@tanstack[\\/]/.test(id) ||
+            /[\\/]node_modules[\\/](react-hook-form|date-fns)[\\/]/.test(id)
+          ) {
+            return "data-vendor";
+          }
+
+          if (
+            /[\\/]node_modules[\\/](recharts|victory-vendor)[\\/]/.test(id) ||
+            /[\\/]node_modules[\\/]d3-[^\\/]+[\\/]/.test(id)
+          ) {
+            return "charts-vendor";
+          }
+
+          if (/[\\/]node_modules[\\/]xlsx[\\/]/.test(id)) {
+            return "xlsx";
+          }
+
+          return "vendor";
+        },
+      },
+    },
   },
   server: {
     fs: {
