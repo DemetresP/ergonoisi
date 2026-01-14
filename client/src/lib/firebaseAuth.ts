@@ -1,5 +1,5 @@
 import { onIdTokenChanged, signInWithPopup, signOut } from "firebase/auth";
-import { auth, googleProvider } from "./firebase";
+import { auth, googleProvider, isFirebaseConfigured } from "./firebase";
 
 const TOKEN_KEY = "firebaseIdToken";
 
@@ -20,6 +20,9 @@ export function clearStoredIdToken() {
 }
 
 export async function signInWithGooglePopup(): Promise<void> {
+  if (!isFirebaseConfigured || !auth || !googleProvider) {
+    throw new Error("Firebase is not configured. Missing VITE_FIREBASE_* env vars.");
+  }
   const result = await signInWithPopup(auth, googleProvider);
   const token = await result.user.getIdToken(true);
   try {
@@ -30,7 +33,7 @@ export async function signInWithGooglePopup(): Promise<void> {
 }
 
 export async function firebaseLogout(): Promise<void> {
-  await signOut(auth);
+  if (auth) await signOut(auth);
   clearStoredIdToken();
 }
 
@@ -39,6 +42,9 @@ export async function firebaseLogout(): Promise<void> {
  * Returns unsubscribe function.
  */
 export function startIdTokenSync(onTokenChange?: () => void) {
+  if (!auth) {
+    return () => {};
+  }
   return onIdTokenChanged(auth, async (user) => {
     if (!user) {
       clearStoredIdToken();

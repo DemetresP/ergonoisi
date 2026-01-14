@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { signInWithGooglePopup } from "@/lib/firebaseAuth";
 import { queryClient } from "@/lib/queryClient";
+import { isFirebaseConfigured } from "@/lib/firebase";
 
 export default function Landing() {
   const { toast } = useToast();
@@ -12,6 +13,14 @@ export default function Landing() {
 
   const handleLogin = async () => {
     try {
+      if (!isFirebaseConfigured) {
+        toast({
+          title: "Firebase not configured",
+          description: "Missing VITE_FIREBASE_* env vars. Check Render Environment and redeploy.",
+          variant: "destructive",
+        });
+        return;
+      }
       setIsSigningIn(true);
       await signInWithGooglePopup();
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
@@ -36,7 +45,7 @@ export default function Landing() {
             </div>
             <h1 className="text-xl font-bold tracking-tight">tlife</h1>
           </div>
-          <Button onClick={handleLogin} disabled={isSigningIn} data-testid="button-login">
+          <Button onClick={handleLogin} disabled={isSigningIn || !isFirebaseConfigured} data-testid="button-login">
             {isSigningIn ? "Connecting..." : "Log In with Google"}
           </Button>
         </div>
@@ -53,7 +62,7 @@ export default function Landing() {
               <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
                 Οργάνωσε τις εργασίες βίντεο, παρακολούθησε τον φόρτο της ομάδας και μην χάνεις ποτέ προθεσμία. Δημιουργήθηκε για δημιουργικές ομάδες που χρειάζονται σαφήνεια και ταχύτητα.
               </p>
-              <Button size="lg" onClick={handleLogin} disabled={isSigningIn} data-testid="button-get-started">
+              <Button size="lg" onClick={handleLogin} disabled={isSigningIn || !isFirebaseConfigured} data-testid="button-get-started">
                 {isSigningIn ? "Connecting..." : "Get Started (Google)"}
               </Button>
             </div>
