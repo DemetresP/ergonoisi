@@ -1,0 +1,15 @@
+.git_old/
+
+.replit
+replit.md
+push-to-github.ps1
+attached_assets/
+
+.local/
+.env
+.env.*
+
+node_modules/
+dist/
+build/
+.cache/
