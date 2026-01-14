@@ -3,8 +3,16 @@ import OpenAI from "openai";
 // Using blueprint:javascript_openai
 // Using gpt-3.5-turbo for cost efficiency
 
-// This is using OpenAI's API, which points to OpenAI's API servers and requires your own API key.
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI | null {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey });
+  }
+  return openaiClient;
+}
 
 export interface ParsedTask {
   title: string;
@@ -17,6 +25,11 @@ export interface ParsedTask {
 
 export async function parseWeeklyScheduleToTasks(scheduleText: string): Promise<ParsedTask[]> {
   try {
+    const openai = getOpenAIClient();
+    if (!openai) {
+      throw new Error("OpenAI is not configured (missing OPENAI_API_KEY)");
+    }
+
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [

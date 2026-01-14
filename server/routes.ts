@@ -190,6 +190,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(createdTasks);
     } catch (error: any) {
       console.error("Error generating tasks from AI:", error);
+      if (String(error?.message || "").includes("OpenAI is not configured")) {
+        return res.status(503).json({
+          message: "AI is not configured on the server (missing OPENAI_API_KEY).",
+        });
+      }
       res.status(500).json({
         message: "Failed to generate tasks",
         error: error.message,
