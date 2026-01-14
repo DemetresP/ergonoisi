@@ -1,5 +1,9 @@
 import admin from "firebase-admin";
 
+export function isFirebaseAdminInitialized() {
+  return admin.apps.length > 0;
+}
+
 function getServiceAccount() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     try {

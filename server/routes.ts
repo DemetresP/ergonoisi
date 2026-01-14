@@ -6,10 +6,34 @@ import { z } from "zod";
 import { isAdmin } from "@shared/admin";
 import { parseWeeklyScheduleToTasks } from "./openai";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { isFirebaseAdminInitialized } from "./firebaseAdmin";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Firebase auth (via ./replitAuth middleware) — always enabled
   await setupAuth(app);
+
+  // Health / debug (no secrets)
+  app.get("/api/health", (_req, res) => {
+    const hasServiceAccountEnv = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT);
+    const hasProjectId = Boolean(process.env.FIREBASE_PROJECT_ID);
+    const hasClientEmail = Boolean(process.env.FIREBASE_CLIENT_EMAIL);
+    const hasPrivateKey = Boolean(process.env.FIREBASE_PRIVATE_KEY);
+    const hasOpenAIKey = Boolean(process.env.OPENAI_API_KEY);
+
+    res.json({
+      ok: true,
+      node: process.version,
+      env: process.env.NODE_ENV,
+      firebaseAdminInitialized: isFirebaseAdminInitialized(),
+      firebaseEnv: {
+        hasServiceAccountEnv,
+        hasProjectId,
+        hasClientEmail,
+        hasPrivateKey,
+      },
+      openaiConfigured: hasOpenAIKey,
+    });
+  });
 
   // Auth routes
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
