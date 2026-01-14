@@ -5,34 +5,16 @@ import { insertTaskSchema } from "@shared/schema";
 import { z } from "zod";
 import { isAdmin } from "@shared/admin";
 import { parseWeeklyScheduleToTasks } from "./openai";
-
-/**
- * Replit auth toggle
- * When false, auth is completely disabled (Render / production without Replit)
- */
-const ENABLE_REPLIT_AUTH = process.env.ENABLE_REPLIT_AUTH === "true";
-
-/**
- * Defaults when auth is disabled
- */
-let setupAuth: (app: Express) => Promise<void> = async () => {};
-let isAuthenticated: any = (_req: any, _res: any, next: any) => next();
+import { setupAuth, isAuthenticated } from "./replitAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  /**
-   * Conditionally load Replit auth ONLY if enabled
-   */
-  if (ENABLE_REPLIT_AUTH) {
-    const mod = await import("./replitAuth");
-    setupAuth = mod.setupAuth;
-    isAuthenticated = mod.isAuthenticated;
-    await setupAuth(app);
-  }
+  // Firebase auth (via ./replitAuth middleware) — always enabled
+  await setupAuth(app);
 
   // Auth routes
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.user?.uid;
       if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
       const user = await storage.getUser(userId);
@@ -71,8 +53,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tasks", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      const userEmail = req.user?.claims?.email;
+      const userId = req.user?.uid;
+      const userEmail = req.user?.email;
 
       if (!userId || !userEmail) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -108,7 +90,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userEmail = req.user?.claims?.email;
+      const userEmail = req.user?.email;
       if (!userEmail) return res.status(401).json({ message: "Unauthorized" });
 
       // Check if non-admin user is trying to update assignee, shootTime, deliveryDate, or deliveryTime
@@ -145,7 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userEmail = req.user?.claims?.email;
+      const userEmail = req.user?.email;
       if (!userEmail) return res.status(401).json({ message: "Unauthorized" });
 
       // Check if user is admin - only admin can delete tasks
@@ -170,8 +152,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tasks/ai-generate", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      const userEmail = req.user?.claims?.email;
+      const userId = req.user?.uid;
+      const userEmail = req.user?.email;
       const { scheduleText } = req.body;
 
       if (!userId || !userEmail) {

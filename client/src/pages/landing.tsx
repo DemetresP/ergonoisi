@@ -1,8 +1,31 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Clock, Users, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { signInWithGooglePopup } from "@/lib/firebaseAuth";
+import { queryClient } from "@/lib/queryClient";
 
 export default function Landing() {
+  const { toast } = useToast();
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const handleLogin = async () => {
+    try {
+      setIsSigningIn(true);
+      await signInWithGooglePopup();
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    } catch (e: any) {
+      toast({
+        title: "Login failed",
+        description: e?.message || "Could not sign in with Google.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
@@ -13,8 +36,8 @@ export default function Landing() {
             </div>
             <h1 className="text-xl font-bold tracking-tight">tlife</h1>
           </div>
-          <Button asChild data-testid="button-login">
-            <a href="/api/login">Log In</a>
+          <Button onClick={handleLogin} disabled={isSigningIn} data-testid="button-login">
+            {isSigningIn ? "Connecting..." : "Log In with Google"}
           </Button>
         </div>
       </header>
@@ -30,8 +53,8 @@ export default function Landing() {
               <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
                 Οργάνωσε τις εργασίες βίντεο, παρακολούθησε τον φόρτο της ομάδας και μην χάνεις ποτέ προθεσμία. Δημιουργήθηκε για δημιουργικές ομάδες που χρειάζονται σαφήνεια και ταχύτητα.
               </p>
-              <Button size="lg" asChild data-testid="button-get-started">
-                <a href="/api/login">Get Started</a>
+              <Button size="lg" onClick={handleLogin} disabled={isSigningIn} data-testid="button-get-started">
+                {isSigningIn ? "Connecting..." : "Get Started (Google)"}
               </Button>
             </div>
 

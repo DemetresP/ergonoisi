@@ -24,6 +24,7 @@ import { TaskEditDialog } from "@/components/TaskEditDialog";
 import { CalendarView } from "@/components/CalendarView";
 import type { Task } from "@shared/schema";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { firebaseLogout } from "@/lib/firebaseAuth";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -32,6 +33,16 @@ export default function Dashboard() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
   const [aiScheduleText, setAiScheduleText] = useState("");
+
+  const handleLogout = async () => {
+    try {
+      await firebaseLogout();
+    } finally {
+      queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.removeQueries({ queryKey: ["/api/tasks"] });
+      window.location.href = "/";
+    }
+  };
 
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -56,7 +67,7 @@ export default function Dashboard() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/";
         }, 500);
         return;
       }
@@ -89,7 +100,7 @@ export default function Dashboard() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/";
         }, 500);
         return;
       }
@@ -120,7 +131,7 @@ export default function Dashboard() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/";
         }, 500);
         return;
       }
@@ -253,7 +264,7 @@ export default function Dashboard() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/";
         }, 500);
         return;
       }
@@ -318,11 +329,16 @@ export default function Dashboard() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <a href="/api/logout" className="cursor-pointer" data-testid="button-logout">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </a>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  handleLogout();
+                }}
+                className="cursor-pointer"
+                data-testid="button-logout"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

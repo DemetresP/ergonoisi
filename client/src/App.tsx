@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
+import { useEffect } from "react";
+import { startIdTokenSync } from "@/lib/firebaseAuth";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -26,6 +28,14 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    const unsub = startIdTokenSync(() => {
+      // When token changes (login/logout/refresh), refetch user
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    });
+    return () => unsub();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
