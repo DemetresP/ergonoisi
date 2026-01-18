@@ -43,7 +43,7 @@ export default function Landing() {
             <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
               <Calendar className="w-5 h-5 text-primary-foreground" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight">tlife</h1>
+            <h1 className="text-xl font-bold tracking-tight">athenai.gr</h1>
           </div>
           <Button onClick={handleLogin} disabled={isSigningIn || !isFirebaseConfigured} data-testid="button-login">
             {isSigningIn ? "Connecting..." : "Log In with Google"}
@@ -110,7 +110,7 @@ export default function Landing() {
 
       <footer className="border-t py-8">
         <div className="max-w-7xl mx-auto px-6 md:px-8 text-center text-sm text-muted-foreground">
-          <p>tlife - Professional task scheduling for video production</p>
+          <p>athenai.gr - Professional task scheduling for video production</p>
         </div>
       </footer>
     </div>

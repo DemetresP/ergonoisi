@@ -304,7 +304,7 @@ export default function Dashboard() {
             <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
               <Calendar className="w-5 h-5 text-primary-foreground" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight">tlife</h1>
+            <h1 className="text-xl font-bold tracking-tight">athenai.gr</h1>
           </div>
 
           <DropdownMenu>
