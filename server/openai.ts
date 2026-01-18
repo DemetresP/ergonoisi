@@ -61,11 +61,11 @@ Important:
 - ALWAYS calculate dates based on today's date (${currentDate})
 - Day names refer to THIS week or NEXT week (whichever makes more sense contextually)
 - If a day has already passed this week, assume it means next week
-- Extract person names from context - look for team member names: "Δημήτρης", "Ντίνος", "Χρυσάνθη" (or variations)
+- Extract person names from context - look for team member names: "Δημήτρης", "Γιάννης", "Βασιλική" (or variations)
   - "με Δημήτρη" → assignee: "Δημήτρης"
   - "Δημήτρης" → assignee: "Δημήτρης"
-  - "Ντίνος" → assignee: "Ντίνος"
-  - "Χρυσάνθη" → assignee: "Χρυσάνθη"
+  - "Γιάννης" → assignee: "Γιάννης"
+  - "Βασιλική" → assignee: "Βασιλική"
 - Determine workType from keywords like "γύρισμα" (shoot), "μοντάζ" (edit), "ανέβασμα/φόρτωμα" (upload)
 - Determine tag from keywords: "zappit" → "zappit", "newsit" → "newsit", "tlife" or "TLIFE" → "tlife"
 - If no tag keyword found, default to "tlife"
