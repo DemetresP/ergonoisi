@@ -29,7 +29,7 @@ interface TaskEditDialogProps {
   userEmail?: string | null;
 }
 
-const TEAM_MEMBERS = ["Δημήτρης", "Ντίνος", "Χρυσάνθη"];
+const TEAM_MEMBERS = ["Δημήτρης", "Γιάννης", "Βασιλική"];
 const TAGS = ["newsit", "tlife", "zappit"] as const;
 const WORK_TYPES = [
   { value: "shoot", label: "Γύρισμα" },
