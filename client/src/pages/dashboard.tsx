@@ -383,12 +383,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <TaskForm
-            onSubmit={(taskData) => createTask.mutate(taskData)}
-            isPending={createTask.isPending}
-            userEmail={user?.email}
-          />
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-4">
               <CardTitle className="text-lg font-semibold">Tasks</CardTitle>
@@ -465,6 +459,12 @@ export default function Dashboard() {
           </Card>
 
           {tasks.length > 0 && <WorkloadOverview tasks={tasks} />}
+
+          <TaskForm
+            onSubmit={(taskData) => createTask.mutate(taskData)}
+            isPending={createTask.isPending}
+            userEmail={user?.email}
+          />
         </div>
       </main>
 
