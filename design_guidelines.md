@@ -1,4 +1,4 @@
-# tlife Scheduler - Design Guidelines
+# ATHENAI.gr Scheduler - Design Guidelines
 
 ## Design Approach
 

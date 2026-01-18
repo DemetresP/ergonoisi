@@ -177,7 +177,7 @@ export default function Dashboard() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Tasks");
     
-    const fileName = `tlife-tasks-${new Date().toISOString().split("T")[0]}.xlsx`;
+    const fileName = `athenai-tasks-${new Date().toISOString().split("T")[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
     
     toast({

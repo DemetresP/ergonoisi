@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: tlife
+    name: athenai
     runtime: node
     plan: starter
     autoDeploy: true
