@@ -30,12 +30,20 @@ export async function parseWeeklyScheduleToTasks(scheduleText: string): Promise<
       throw new Error("OpenAI is not configured (missing OPENAI_API_KEY)");
     }
 
+    // Get current date in Greek timezone
+    const now = new Date();
+    const currentDate = now.toISOString().split('T')[0];
+    const dayNames = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'];
+    const currentDayName = dayNames[now.getDay()];
+
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
           content: `You are a production schedule parser. Parse natural language schedule descriptions into structured task data.
+
+IMPORTANT: Today's date is ${currentDate} (${currentDayName}). Use this as reference when calculating dates from day names.
 
 Extract tasks with the following fields:
 - title: The project/task name
@@ -47,14 +55,12 @@ Extract tasks with the following fields:
 
 Respond with a JSON object containing a "tasks" array. Each task should have the fields above.
 
-Example input: "Τρίτη γύρισμα TLIFE με Δημήτρη, παράδοση Πέμπτη"
-Example output: { "tasks": [{ "title": "TLIFE με Δημήτρη", "workType": "shoot", "tag": "tlife", "assignee": "Δημήτρης", "shootDate": "2025-11-12", "deliveryDate": "2025-11-14" }] }
-
-Example input: "zappit 9:00 το πρωί, Δημήτρης, παράδοση τρίτη 14:00"
-Example output: { "tasks": [{ "title": "zappit το πρωί", "workType": "shoot", "tag": "zappit", "assignee": "Δημήτρης", "shootDate": "2025-11-11", "deliveryDate": "2025-11-12" }] }
+Example: If today is ${currentDate} and user says "Τρίτη γύρισμα TLIFE με Δημήτρη, παράδοση Πέμπτη", calculate the actual Tuesday and Thursday dates from today.
 
 Important:
-- Infer dates based on day names (e.g., "Τρίτη" = Tuesday) relative to current week
+- ALWAYS calculate dates based on today's date (${currentDate})
+- Day names refer to THIS week or NEXT week (whichever makes more sense contextually)
+- If a day has already passed this week, assume it means next week
 - Extract person names from context - look for team member names: "Δημήτρης", "Ντίνος", "Χρυσάνθη" (or variations)
   - "με Δημήτρη" → assignee: "Δημήτρης"
   - "Δημήτρης" → assignee: "Δημήτρης"
