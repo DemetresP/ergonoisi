@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { signInWithGooglePopup } from "@/lib/firebaseAuth";
 import { queryClient } from "@/lib/queryClient";
 import { isFirebaseConfigured } from "@/lib/firebase";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Landing() {
   const { toast } = useToast();
@@ -40,14 +41,17 @@ export default function Landing() {
       <header className="border-b">
         <div className="max-w-7xl mx-auto px-6 md:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
+            <div className="w-8 h-8 bg-zinc-900 dark:bg-zinc-800 rounded-md flex items-center justify-center">
               <Calendar className="w-5 h-5 text-brand" />
             </div>
             <h1 className="text-xl font-bold tracking-tight">athenai.gr</h1>
           </div>
-          <Button onClick={handleLogin} disabled={isSigningIn || !isFirebaseConfigured} data-testid="button-login">
-            {isSigningIn ? "Connecting..." : "Log In with Google"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button onClick={handleLogin} disabled={isSigningIn || !isFirebaseConfigured} data-testid="button-login">
+              {isSigningIn ? "Connecting..." : "Log In with Google"}
+            </Button>
+          </div>
         </div>
       </header>
 

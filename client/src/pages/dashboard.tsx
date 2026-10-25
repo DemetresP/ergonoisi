@@ -30,6 +30,7 @@ import { WorkloadOverview } from "@/components/WorkloadOverview";
 import { TaskEditDialog } from "@/components/TaskEditDialog";
 import { CalendarView } from "@/components/CalendarView";
 import { StudioSettingsDialog } from "@/components/StudioSettingsDialog";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { TaskHistoryDialog } from "@/components/TaskHistoryDialog";
 import { TrashDialog } from "@/components/TrashDialog";
 import { FORMAT_LABELS, type Task } from "@shared/schema";
@@ -344,12 +345,14 @@ export default function Dashboard() {
       <header className="border-b sticky top-0 bg-background z-50">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
+            <div className="w-8 h-8 bg-zinc-900 dark:bg-zinc-800 rounded-md flex items-center justify-center">
               <Calendar className="w-5 h-5 text-brand" />
             </div>
             <h1 className="text-xl font-bold tracking-tight">athenai.gr</h1>
           </div>
 
+          <div className="flex items-center gap-1">
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 gap-2 px-2" data-testid="button-user-menu">
@@ -405,6 +408,7 @@ export default function Dashboard() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
       </header>
 

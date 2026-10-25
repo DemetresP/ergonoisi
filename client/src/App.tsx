@@ -9,6 +9,8 @@ import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
 import NoAccess from "@/pages/no-access";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { ThemeColorSync } from "@/components/ThemeToggle";
+import { ThemeProvider } from "next-themes";
 import { useEffect } from "react";
 import { startIdTokenSync } from "@/lib/firebaseAuth";
 
@@ -55,13 +57,16 @@ function App() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-        <InstallPrompt />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <ThemeColorSync />
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+          <InstallPrompt />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 
