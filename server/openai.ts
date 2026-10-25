@@ -1,8 +1,8 @@
 import OpenAI from "openai";
 import type { StudioSettings } from "@shared/schema";
 
-// Using blueprint:javascript_openai
-// Using gpt-3.5-turbo for cost efficiency
+// Small, cheap model with JSON mode; override with OPENAI_MODEL when OpenAI retires it
+const DEFAULT_MODEL = "gpt-4.1-mini";
 
 let openaiClient: OpenAI | null = null;
 
@@ -46,7 +46,7 @@ export async function parseWeeklyScheduleToTasks(
     const seriesList = settings.series.length ? settings.series.map((s) => `"${s}"`).join(", ") : "(none defined)";
 
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
       messages: [
         {
           role: "system",
