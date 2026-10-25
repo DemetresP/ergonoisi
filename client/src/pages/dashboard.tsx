@@ -345,7 +345,7 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-primary-foreground" />
+              <Calendar className="w-5 h-5 text-brand" />
             </div>
             <h1 className="text-xl font-bold tracking-tight">athenai.gr</h1>
           </div>
@@ -422,7 +422,7 @@ export default function Dashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary" />
+                <Sparkles className="w-5 h-5 text-brand" />
                 Φτιάξε πρόγραμμα με AI
               </CardTitle>
             </CardHeader>

@@ -96,10 +96,10 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                 key={idx}
                 className={`bg-background min-h-[72px] md:min-h-[100px] p-1 md:p-2 min-w-0 ${
                   !isCurrentMonth ? "opacity-40" : ""
-                } ${isToday ? "bg-accent/20" : ""}`}
+                } ${isToday ? "bg-accent/60" : ""}`}
                 data-testid={`calendar-day-${format(day, "yyyy-MM-dd")}`}
               >
-                <div className={`text-xs font-mono mb-1 ${isToday ? "font-bold text-primary" : "text-muted-foreground"}`}>
+                <div className={`text-xs font-mono mb-1 ${isToday ? "font-bold text-brand" : "text-muted-foreground"}`}>
                   {format(day, "d")}
                 </div>
                 <div className="space-y-1">

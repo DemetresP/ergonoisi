@@ -41,7 +41,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6 md:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-primary-foreground" />
+              <Calendar className="w-5 h-5 text-brand" />
             </div>
             <h1 className="text-xl font-bold tracking-tight">athenai.gr</h1>
           </div>
@@ -57,7 +57,7 @@ export default function Landing() {
             <div className="max-w-3xl mx-auto text-center">
               <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
                 Προγραμματισμός παραγωγής,{" "}
-                <span className="text-primary">απλά και αποτελεσματικά</span>
+                <span className="text-brand">απλά και αποτελεσματικά</span>
               </h2>
               <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
                 Οργάνωσε τις εργασίες βίντεο, παρακολούθησε τον φόρτο της ομάδας και μην χάνεις ποτέ προθεσμία. Δημιουργήθηκε για δημιουργικές ομάδες που χρειάζονται σαφήνεια και ταχύτητα.
@@ -70,8 +70,8 @@ export default function Landing() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
               <Card>
                 <CardContent className="p-6">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                    <Calendar className="w-6 h-6 text-primary" />
+                  <div className="w-12 h-12 bg-brand/10 rounded-lg flex items-center justify-center mb-4">
+                    <Calendar className="w-6 h-6 text-brand" />
                   </div>
                   <h3 className="text-lg font-semibold mb-2">Παρακολούθησε προθεσμίες</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
@@ -82,8 +82,8 @@ export default function Landing() {
 
               <Card>
                 <CardContent className="p-6">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                    <Users className="w-6 h-6 text-primary" />
+                  <div className="w-12 h-12 bg-brand/10 rounded-lg flex items-center justify-center mb-4">
+                    <Users className="w-6 h-6 text-brand" />
                   </div>
                   <h3 className="text-lg font-semibold mb-2">Εργασίες Ομάδας</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
@@ -94,8 +94,8 @@ export default function Landing() {
 
               <Card>
                 <CardContent className="p-6">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-                    <TrendingUp className="w-6 h-6 text-primary" />
+                  <div className="w-12 h-12 bg-brand/10 rounded-lg flex items-center justify-center mb-4">
+                    <TrendingUp className="w-6 h-6 text-brand" />
                   </div>
                   <h3 className="text-lg font-semibold mb-2">Μείνε οργανωμένος</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">

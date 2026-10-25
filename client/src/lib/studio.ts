@@ -17,8 +17,8 @@ export const FORMATS: { value: TaskFormat; label: string }[] = [
 export const NO_SERIES = "__none__";
 
 export const FORMAT_BADGE_CLASSES: Record<TaskFormat, string> = {
-  reel: "bg-emerald-600 text-white border-emerald-600 dark:bg-emerald-600 dark:text-white dark:border-emerald-500",
-  podcast: "bg-slate-800 text-white border-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:border-slate-200",
+  reel: "bg-brand text-brand-foreground border-brand",
+  podcast: "bg-primary text-primary-foreground border-primary",
 };
 
 const SERIES_COLORS = [
@@ -26,7 +26,7 @@ const SERIES_COLORS = [
   "bg-amber-500 text-white border-amber-500",
   "bg-rose-600 text-white border-rose-600",
   "bg-violet-600 text-white border-violet-600",
-  "bg-teal-600 text-white border-teal-600",
+  "bg-slate-500 text-white border-slate-500",
   "bg-orange-600 text-white border-orange-600",
   "bg-indigo-600 text-white border-indigo-600",
   "bg-fuchsia-600 text-white border-fuchsia-600",
