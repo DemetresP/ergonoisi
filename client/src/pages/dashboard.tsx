@@ -38,7 +38,7 @@ import { canEditTask, type TaskPermissionUser } from "@shared/permissions";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { firebaseLogout } from "@/lib/firebaseAuth";
 import { useStudioSettings } from "@/hooks/useStudioSettings";
-import { FORMATS } from "@/lib/studio";
+import { FORMATS, STATUS_LABELS, getWorkTypeLabel } from "@/lib/studio";
 
 const ALL = "__all__";
 
@@ -93,15 +93,15 @@ export default function Dashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({
-        title: "Task created",
-        description: "Your task has been added successfully.",
+        title: "Η εργασία προστέθηκε",
+        description: "Η νέα εργασία είναι στη λίστα.",
       });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: "Αποσυνδέθηκες",
+          description: "Συνδέσου ξανά για να συνεχίσεις.",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -110,8 +110,8 @@ export default function Dashboard() {
         return;
       }
       toast({
-        title: "Error",
-        description: "Failed to create task. Please try again.",
+        title: "Σφάλμα",
+        description: "Η εργασία δεν προστέθηκε. Δοκίμασε ξανά.",
         variant: "destructive",
       });
     },
@@ -126,15 +126,15 @@ export default function Dashboard() {
       setIsEditDialogOpen(false);
       setEditingTask(null);
       toast({
-        title: "Task updated",
-        description: "Your changes have been saved.",
+        title: "Αποθηκεύτηκε",
+        description: "Οι αλλαγές σου αποθηκεύτηκαν.",
       });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: "Αποσυνδέθηκες",
+          description: "Συνδέσου ξανά για να συνεχίσεις.",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -143,10 +143,10 @@ export default function Dashboard() {
         return;
       }
       toast({
-        title: "Error",
+        title: "Σφάλμα",
         description: error.message.startsWith("403")
           ? "Δεν έχεις δικαίωμα για αυτή την αλλαγή."
-          : "Failed to update task. Please try again.",
+          : "Η αλλαγή δεν αποθηκεύτηκε. Δοκίμασε ξανά.",
         variant: "destructive",
       });
     },
@@ -166,8 +166,8 @@ export default function Dashboard() {
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: "Αποσυνδέθηκες",
+          description: "Συνδέσου ξανά για να συνεχίσεις.",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -179,52 +179,48 @@ export default function Dashboard() {
       if (error.message?.includes("404") || error.message?.includes("not found")) {
         queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
         toast({
-          title: "Task deleted",
-          description: "The task was already removed.",
+          title: "Στον κάδο",
+          description: "Η εργασία είχε ήδη αφαιρεθεί.",
         });
         return;
       }
 
       toast({
-        title: "Error",
-        description: "Failed to delete task. Please try again.",
+        title: "Σφάλμα",
+        description: "Η διαγραφή απέτυχε. Δοκίμασε ξανά.",
         variant: "destructive",
       });
     },
   });
 
   const handleExport = () => {
-    const getWorkTypeLabel = (workType: string) => {
-      if (workType === 'shoot') return 'Γύρισμα';
-      if (workType === 'edit') return 'Μοντάζ';
-      if (workType === 'upload') return 'Φόρτωμα';
-      return 'Γύρισμα';
-    };
-
     const exportData = tasks.map((task) => ({
-      Title: task.title,
-      "Production Date": task.shootDate || "",
-      "Delivery Date": task.deliveryDate || "",
-      "Delivery Time": task.deliveryTime || "",
-      Assignee: task.assignee,
-      "Work Type": getWorkTypeLabel(task.workType),
-      Status: task.status,
-      Format: FORMAT_LABELS[task.format],
-      Series: task.series || "",
-      Guest: task.guest || "",
-      Notes: task.notes || "",
+      "Τίτλος": task.title,
+      "Ημ. γυρίσματος": task.shootDate || "",
+      "Ώρα γυρίσματος": task.shootTime || "",
+      "Ημ. παράδοσης": task.deliveryDate || "",
+      "Ώρα παράδοσης": task.deliveryTime || "",
+      "Ημ. δημοσίευσης": task.publishDate || "",
+      "Ώρα δημοσίευσης": task.publishTime || "",
+      "Υπεύθυνος": task.assignee || "",
+      "Είδος": getWorkTypeLabel(task.workType),
+      "Κατάσταση": STATUS_LABELS[task.status],
+      "Μορφή": FORMAT_LABELS[task.format],
+      "Σειρά": task.series || "",
+      "Καλεσμένος": task.guest || "",
+      "Σημειώσεις": task.notes || "",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Tasks");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Εργασίες");
 
     const fileName = `athenai-tasks-${new Date().toISOString().split("T")[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
 
     toast({
-      title: "Export successful",
-      description: "Your tasks have been exported to Excel.",
+      title: "Έγινε εξαγωγή",
+      description: "Οι εργασίες αποθηκεύτηκαν σε Excel.",
     });
   };
 
@@ -247,39 +243,55 @@ export default function Dashboard() {
           throw new Error("Invalid Excel format");
         }
 
-        const parseWorkType = (value: any): "shoot" | "edit" | "upload" => {
-          if (!value) return "shoot";
-          const str = String(value).toLowerCase();
-          if (str.includes('γύρισμα') || str === 'shoot') return 'shoot';
-          if (str.includes('μοντάζ') || str === 'edit') return 'edit';
-          if (str.includes('φόρτωμα') || str === 'upload') return 'upload';
+        // First non-empty column among the Greek header and older English ones
+        const pick = (row: any, ...keys: string[]) => {
+          for (const key of keys) {
+            if (row[key] !== undefined && row[key] !== "") return String(row[key]);
+          }
+          return null;
+        };
+
+        const parseWorkType = (value: string | null): "shoot" | "edit" | "upload" => {
+          const str = (value || "").toLowerCase();
+          if (str.includes("μοντάζ") || str === "edit") return "edit";
+          if (str.includes("φόρτωμα") || str === "upload") return "upload";
           return "shoot";
+        };
+
+        const parseStatus = (value: string | null): "todo" | "inprogress" | "done" => {
+          const str = (value || "").toLowerCase();
+          if (str === "done" || str.includes("ολοκληρ")) return "done";
+          if (str === "inprogress" || str.includes("εξέλιξη")) return "inprogress";
+          return "todo";
         };
 
         for (const row of importedData) {
           await createTask.mutateAsync({
-            title: row.Title || row.title,
-            shootDate: row["Production Date"] || row["Shoot Date"] || row.shootDate || null,
-            deliveryDate: row["Delivery Date"] || row.deliveryDate || null,
-            deliveryTime: row["Delivery Time"] || row.deliveryTime || null,
-            notes: row.Notes || row.notes || null,
-            assignee: row.Assignee || row.assignee,
-            workType: parseWorkType(row["Work Type"] || row.workType),
-            status: row.Status || row.status || "todo",
-            format: String(row.Format || row.format || "").toLowerCase().includes("podcast") ? "podcast" : "reel",
-            series: row.Series || row.series || null,
-            guest: row.Guest || row.guest || null,
+            title: pick(row, "Τίτλος", "Title", "title"),
+            shootDate: pick(row, "Ημ. γυρίσματος", "Production Date", "Shoot Date", "shootDate"),
+            shootTime: pick(row, "Ώρα γυρίσματος", "shootTime"),
+            deliveryDate: pick(row, "Ημ. παράδοσης", "Delivery Date", "deliveryDate"),
+            deliveryTime: pick(row, "Ώρα παράδοσης", "Delivery Time", "deliveryTime"),
+            publishDate: pick(row, "Ημ. δημοσίευσης", "publishDate"),
+            publishTime: pick(row, "Ώρα δημοσίευσης", "publishTime"),
+            notes: pick(row, "Σημειώσεις", "Notes", "notes"),
+            assignee: pick(row, "Υπεύθυνος", "Assignee", "assignee") || undefined,
+            workType: parseWorkType(pick(row, "Είδος", "Work Type", "workType")),
+            status: parseStatus(pick(row, "Κατάσταση", "Status", "status")),
+            format: (pick(row, "Μορφή", "Format", "format") || "").toLowerCase().includes("podcast") ? "podcast" : "reel",
+            series: pick(row, "Σειρά", "Series", "series"),
+            guest: pick(row, "Καλεσμένος", "Guest", "guest"),
           });
         }
 
         toast({
-          title: "Import successful",
-          description: `Imported ${importedData.length} tasks.`,
+          title: "Έγινε εισαγωγή",
+          description: `Προστέθηκαν ${importedData.length} εργασίες.`,
         });
       } catch (error) {
         toast({
-          title: "Import failed",
-          description: "Invalid file format. Please check your Excel file.",
+          title: "Η εισαγωγή απέτυχε",
+          description: "Μη έγκυρο αρχείο. Έλεγξε το Excel.",
           variant: "destructive",
         });
       }
@@ -296,15 +308,15 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       setAiScheduleText("");
       toast({
-        title: "Tasks created",
-        description: `${data.length} task(s) created successfully from your schedule.`,
+        title: "Το πρόγραμμα δημιουργήθηκε",
+        description: `Προστέθηκαν ${data.length} εργασίες από το πρόγραμμά σου.`,
       });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: "Αποσυνδέθηκες",
+          description: "Συνδέσου ξανά για να συνεχίσεις.",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -314,8 +326,8 @@ export default function Dashboard() {
       }
       console.error("AI generation error:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to generate tasks. Please try again.",
+        title: "Σφάλμα",
+        description: error.message || "Το AI δεν μπόρεσε να φτιάξει το πρόγραμμα. Δοκίμασε ξανά.",
         variant: "destructive",
       });
     },
@@ -324,8 +336,8 @@ export default function Dashboard() {
   const handleAIGenerate = () => {
     if (!aiScheduleText.trim()) {
       toast({
-        title: "Empty input",
-        description: "Please enter your weekly schedule.",
+        title: "Κενό κείμενο",
+        description: "Γράψε πρώτα το πρόγραμμα της εβδομάδας.",
         variant: "destructive",
       });
       return;
@@ -360,7 +372,7 @@ export default function Dashboard() {
                   <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.email || "User"} />
                   <AvatarFallback className="text-xs">{getUserInitials()}</AvatarFallback>
                 </Avatar>
-                <span className="text-sm hidden md:inline-block">{user?.email || "User"}</span>
+                <span className="text-sm hidden md:inline-block">{user?.email || "Χρήστης"}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -369,7 +381,7 @@ export default function Dashboard() {
                   <p className="text-sm font-medium">
                     {user?.firstName || user?.lastName
                       ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
-                      : "User"}
+                      : "Χρήστης"}
                   </p>
                   <p className="text-xs text-muted-foreground">{user?.email || ""}</p>
                 </div>
@@ -404,7 +416,7 @@ export default function Dashboard() {
                 data-testid="button-logout"
               >
                 <LogOut className="mr-2 h-4 w-4" />
-                Log out
+                Αποσύνδεση
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -453,7 +465,7 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 space-y-0 pb-4">
               <div className="flex flex-wrap items-center gap-3">
-                <CardTitle className="text-lg font-semibold">Tasks</CardTitle>
+                <CardTitle className="text-lg font-semibold">Εργασίες</CardTitle>
                 <Select value={formatFilter} onValueChange={setFormatFilter}>
                   <SelectTrigger className="h-9 w-[130px]" data-testid="filter-format">
                     <SelectValue />
@@ -510,7 +522,7 @@ export default function Dashboard() {
                   className="gap-2"
                 >
                   <Download className="w-4 h-4" />
-                  Export
+                  Εξαγωγή
                 </Button>
                 <Button
                   variant="outline"
@@ -519,14 +531,14 @@ export default function Dashboard() {
                   className="gap-2"
                 >
                   <Upload className="w-4 h-4" />
-                  Import
+                  Εισαγωγή
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
               {isLoading ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  Loading tasks...
+                  Φόρτωση εργασιών...
                 </div>
               ) : viewMode === "table" ? (
                 <TaskTable

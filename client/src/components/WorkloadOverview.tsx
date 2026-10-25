@@ -51,7 +51,7 @@ export function WorkloadOverview({ tasks }: WorkloadOverviewProps) {
               <div className="font-semibold mb-3">{person}</div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tasks</span>
+                  <span className="text-muted-foreground">Εργασίες</span>
                   <span className="font-mono font-semibold" data-testid={`workload-tasks-${person}`}>
                     {stats.tasks}
                   </span>
@@ -60,7 +60,7 @@ export function WorkloadOverview({ tasks }: WorkloadOverviewProps) {
                   <div className="flex items-center gap-1.5 text-destructive pt-1">
                     <AlertTriangle className="w-4 h-4" />
                     <span className="font-semibold" data-testid={`workload-overdue-${person}`}>
-                      {stats.overdue} overdue
+                      {stats.overdue} εκπρόθεσμες
                     </span>
                   </div>
                 )}

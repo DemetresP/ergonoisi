@@ -1,11 +1,26 @@
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Camera, Package } from "lucide-react";
+import { ChevronLeft, ChevronRight, Camera, Package, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { el } from "date-fns/locale";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { FORMAT_LABELS, type Task } from "@shared/schema";
 import { useStudioSettings } from "@/hooks/useStudioSettings";
 import { FORMAT_BADGE_CLASSES, getSeriesColor } from "@/lib/studio";
+
+const EVENT_TYPES = [
+  { type: "shoot", label: "Γύρισμα", dateField: "shootDate", timeField: "shootTime", icon: Camera, variant: "default", className: "" },
+  { type: "delivery", label: "Παράδοση", dateField: "deliveryDate", timeField: "deliveryTime", icon: Package, variant: "secondary", className: "" },
+  {
+    type: "publish",
+    label: "Δημοσίευση",
+    dateField: "publishDate",
+    timeField: "publishTime",
+    icon: Megaphone,
+    variant: "outline",
+    className: "bg-brand/15 text-foreground border-brand/50",
+  },
+] as const;
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -23,30 +38,20 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
 
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  const getTasksForDate = (date: Date) => {
-    return tasks.filter(task => {
-      const shootDate = task.shootDate ? parseISO(task.shootDate) : null;
-      const deliveryDate = task.deliveryDate ? parseISO(task.deliveryDate) : null;
-      
-      return (shootDate && isSameDay(shootDate, date)) || 
-             (deliveryDate && isSameDay(deliveryDate, date));
-    });
-  };
-
-  const getTaskType = (task: Task, date: Date) => {
-    const shootDate = task.shootDate ? parseISO(task.shootDate) : null;
-    const deliveryDate = task.deliveryDate ? parseISO(task.deliveryDate) : null;
-    
-    if (shootDate && isSameDay(shootDate, date)) return "shoot";
-    if (deliveryDate && isSameDay(deliveryDate, date)) return "delivery";
-    return null;
-  };
+  // A task can appear on up to three days: shoot, delivery and publish
+  const getEventsForDate = (date: Date) =>
+    tasks.flatMap((task) =>
+      EVENT_TYPES.filter(({ dateField }) => {
+        const value = task[dateField];
+        return value ? isSameDay(parseISO(value), date) : false;
+      }).map((event) => ({ task, event })),
+    );
 
   return (
     <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold">
-            {format(currentMonth, "MMMM yyyy")}
+            <span className="capitalize">{format(currentMonth, "LLLL yyyy", { locale: el })}</span>
           </h2>
           <div className="flex gap-2">
             <Button
@@ -62,7 +67,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
               onClick={() => setCurrentMonth(new Date())}
               data-testid="button-today"
             >
-              Today
+              Σήμερα
             </Button>
             <Button
               variant="outline"
@@ -87,7 +92,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           ))}
 
           {days.map((day, idx) => {
-            const dayTasks = getTasksForDate(day);
+            const dayEvents = getEventsForDate(day);
             const isCurrentMonth = isSameMonth(day, currentMonth);
             const isToday = isSameDay(day, new Date());
 
@@ -103,39 +108,31 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                   {format(day, "d")}
                 </div>
                 <div className="space-y-1">
-                  {dayTasks.map((task) => {
-                    const taskType = getTaskType(task, day);
-                    const isDone = task.status === 'done';
-                    const badgeClass = isDone 
-                      ? "w-full justify-start text-xs truncate gap-1 no-default-hover-elevate no-default-active-elevate bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
-                      : "w-full justify-start text-xs truncate gap-1 no-default-hover-elevate no-default-active-elevate";
+                  {dayEvents.map(({ task, event }) => {
+                    const isDone = task.status === "done";
+                    const Icon = event.icon;
+                    const time = task[event.timeField];
+                    const badgeClass = `w-full justify-start text-xs truncate gap-1 no-default-hover-elevate no-default-active-elevate ${
+                      isDone
+                        ? "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+                        : event.className
+                    }`;
                     return (
                       <button
-                        key={`${task.id}-${taskType}`}
+                        key={`${task.id}-${event.type}`}
                         onClick={() => onTaskClick(task)}
                         className="w-full text-left hover-elevate active-elevate-2 rounded-sm"
-                        data-testid={`calendar-task-${task.id}`}
+                        title={`${event.label}: ${task.title}`}
+                        data-testid={`calendar-task-${task.id}-${event.type}`}
                       >
-                        <Badge
-                          variant={isDone ? "outline" : (taskType === "shoot" ? "default" : "secondary")}
-                          className={badgeClass}
-                        >
-                          {taskType === "shoot" ? (
-                            <Camera className="w-3 h-3 shrink-0" />
-                          ) : (
-                            <Package className="w-3 h-3 shrink-0" />
-                          )}
+                        <Badge variant={isDone ? "outline" : event.variant} className={badgeClass}>
+                          <Icon className="w-3 h-3 shrink-0" />
                           <span className="truncate flex-1">
-                            {taskType === "shoot" && task.shootTime && (
-                              <span className="font-mono mr-1">{task.shootTime}</span>
-                            )}
-                            {taskType === "delivery" && task.deliveryTime && (
-                              <span className="font-mono mr-1">{task.deliveryTime}</span>
-                            )}
+                            {time && <span className="font-mono mr-1">{time}</span>}
                             {task.title}
                           </span>
                           <span
-                            className={`text-[10px] font-semibold ml-1 shrink-0 px-1 py-0.5 rounded ${
+                            className={`text-[10px] font-semibold ml-1 shrink-0 px-1 py-0.5 rounded hidden md:inline ${
                               task.series ? getSeriesColor(task.series, seriesList) : FORMAT_BADGE_CLASSES[task.format]
                             }`}
                             title={task.series ? `${FORMAT_LABELS[task.format]} · ${task.series}` : FORMAT_LABELS[task.format]}
@@ -152,15 +149,13 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           })}
         </div>
 
-        <div className="flex gap-4 mt-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Camera className="w-3 h-3" />
-            <span>Production Date</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Package className="w-3 h-3" />
-            <span>Delivery Date</span>
-          </div>
+        <div className="flex flex-wrap gap-4 mt-4 text-xs text-muted-foreground">
+          {EVENT_TYPES.map(({ type, label, icon: Icon }) => (
+            <div key={type} className="flex items-center gap-1.5">
+              <Icon className="w-3 h-3" />
+              <span>{label}</span>
+            </div>
+          ))}
         </div>
       </div>
   );

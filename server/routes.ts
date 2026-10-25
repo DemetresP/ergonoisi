@@ -179,11 +179,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: actor.uid,
       });
 
-      // Check if non-admin user is trying to set assignee, shootTime, deliveryDate, or deliveryTime
+      // Non-admins may propose a shoot date, but the other scheduling fields are admin-only
       if (!actor.isAdmin) {
-        if (req.body.assignee || req.body.shootTime || req.body.deliveryDate || req.body.deliveryTime) {
+        if (ADMIN_ONLY_TASK_FIELDS.some((field) => field !== "shootDate" && req.body[field])) {
           return res.status(403).json({
-            message: "Only admin can set assignee, production time, delivery date, and delivery time",
+            message: "Only admin can set assignee, times, delivery and publish dates",
           });
         }
       }
@@ -227,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (ADMIN_ONLY_TASK_FIELDS.some((field) => changed.has(field))) {
           return res.status(403).json({
-            message: "Only admin can change assignee, production date/time and delivery date/time",
+            message: "Only admin can change assignee and shoot, delivery or publish dates/times",
           });
         }
         if (changed.has("status") && !canChangeStatus(existing, actor)) {
@@ -335,6 +335,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (parsedTask.shootDate) taskData.shootDate = parsedTask.shootDate;
           if (parsedTask.shootTime) taskData.shootTime = parsedTask.shootTime;
           if (parsedTask.deliveryDate) taskData.deliveryDate = parsedTask.deliveryDate;
+          if (parsedTask.publishDate) taskData.publishDate = parsedTask.publishDate;
+          if (parsedTask.publishTime) taskData.publishTime = parsedTask.publishTime;
         }
 
         const validatedData = insertTaskSchema.parse(taskData);

@@ -8,7 +8,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { FORMAT_LABELS, type Task, type TaskHistoryEntry } from "@shared/schema";
-import { WORK_TYPES } from "@/lib/studio";
+import { STATUS_LABELS, WORK_TYPES } from "@/lib/studio";
 
 interface TaskHistoryDialogProps {
   task: Task | null;
@@ -21,6 +21,8 @@ const FIELD_LABELS: Record<string, string> = {
   shootTime: "Ώρα γυρίσματος",
   deliveryDate: "Ημ. παράδοσης",
   deliveryTime: "Ώρα παράδοσης",
+  publishDate: "Ημ. δημοσίευσης",
+  publishTime: "Ώρα δημοσίευσης",
   notes: "Σημειώσεις",
   assignee: "Υπεύθυνος",
   workType: "Είδος εργασίας",
@@ -37,12 +39,10 @@ const ACTION_LABELS: Record<TaskHistoryEntry["action"], string> = {
   restore: "την επανέφερε από τον κάδο",
 };
 
-const STATUS_LABELS: Record<string, string> = { todo: "To Do", inprogress: "In Progress", done: "Done" };
-
 function formatValue(field: string, value: unknown) {
   if (value === null || value === undefined) return "—";
   const str = String(value);
-  if (field === "status") return STATUS_LABELS[str] ?? str;
+  if (field === "status") return STATUS_LABELS[str as keyof typeof STATUS_LABELS] ?? str;
   if (field === "workType") return WORK_TYPES.find((t) => t.value === str)?.label ?? str;
   if (field === "format") return FORMAT_LABELS[str as keyof typeof FORMAT_LABELS] ?? str;
   return str;

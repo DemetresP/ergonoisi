@@ -25,6 +25,8 @@ export interface ParsedTask {
   shootDate?: string;
   shootTime?: string;
   deliveryDate?: string;
+  publishDate?: string;
+  publishTime?: string;
 }
 
 export async function parseWeeklyScheduleToTasks(
@@ -64,6 +66,8 @@ Extract tasks with the following fields:
 - shootDate: Production date in YYYY-MM-DD format (optional)
 - shootTime: Production time in HH:MM 24-hour format (optional)
 - deliveryDate: Delivery date in YYYY-MM-DD format (optional)
+- publishDate: Date the video goes live / is published, in YYYY-MM-DD format (optional)
+- publishTime: Publish time in HH:MM 24-hour format (optional)
 
 Respond with a JSON object containing a "tasks" array. Each task should have the fields above.
 
@@ -74,6 +78,7 @@ Important:
 - Day names refer to THIS week or NEXT week (whichever makes more sense contextually)
 - If a day has already passed this week, assume it means next week
 - Determine workType from keywords like "γύρισμα"/"ηχογράφηση" (shoot), "μοντάζ" (edit), "ανέβασμα/φόρτωμα" (upload)
+- Publishing keywords: "δημοσίευση", "ανεβαίνει", "βγαίνει", "παίζει", "προβολή", "live" → publishDate/publishTime (put publishing on the same task as the upload when both are mentioned)
 - Determine format from keywords: "podcast" → "podcast"; "reel", "ριλ" or anything else → "reel"
 - Match series loosely to the HuffPost section (e.g. "οικονομικό" or "οικονομία" → "Οικονομία", "αθλητικό" → "Αθλητικά", "πολιτικό" → "Πολιτική")
 - "με <όνομα>" usually names the guest journalist unless the name is a team member, in which case it is the assignee

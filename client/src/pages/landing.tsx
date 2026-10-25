@@ -16,8 +16,8 @@ export default function Landing() {
     try {
       if (!isFirebaseConfigured) {
         toast({
-          title: "Firebase not configured",
-          description: "Missing VITE_FIREBASE_* env vars. Check Render Environment and redeploy.",
+          title: "Η σύνδεση δεν είναι διαθέσιμη",
+          description: "Λείπουν οι ρυθμίσεις Firebase (VITE_FIREBASE_*) στο Render.",
           variant: "destructive",
         });
         return;
@@ -27,7 +27,7 @@ export default function Landing() {
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     } catch (e: any) {
       toast({
-        title: "Login failed",
+        title: "Η σύνδεση απέτυχε",
         description: e?.message || "Could not sign in with Google.",
         variant: "destructive",
       });
@@ -49,7 +49,7 @@ export default function Landing() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Button onClick={handleLogin} disabled={isSigningIn || !isFirebaseConfigured} data-testid="button-login">
-              {isSigningIn ? "Connecting..." : "Log In with Google"}
+              {isSigningIn ? "Σύνδεση..." : "Σύνδεση με Google"}
             </Button>
           </div>
         </div>
@@ -67,7 +67,7 @@ export default function Landing() {
                 Οργάνωσε τις εργασίες βίντεο, παρακολούθησε τον φόρτο της ομάδας και μην χάνεις ποτέ προθεσμία. Δημιουργήθηκε για δημιουργικές ομάδες που χρειάζονται σαφήνεια και ταχύτητα.
               </p>
               <Button size="lg" onClick={handleLogin} disabled={isSigningIn || !isFirebaseConfigured} data-testid="button-get-started">
-                {isSigningIn ? "Connecting..." : "Get Started (Google)"}
+                {isSigningIn ? "Σύνδεση..." : "Ξεκίνα με Google"}
               </Button>
             </div>
 

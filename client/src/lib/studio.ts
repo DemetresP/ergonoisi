@@ -1,3 +1,5 @@
+import { format, isValid, parseISO } from "date-fns";
+import { el } from "date-fns/locale";
 import type { TaskFormat } from "@shared/schema";
 
 export const WORK_TYPES = [
@@ -12,6 +14,23 @@ export const FORMATS: { value: TaskFormat; label: string }[] = [
   { value: "reel", label: "Reel" },
   { value: "podcast", label: "Podcast" },
 ];
+
+// "Τρι 12/11" for the table; falls back to the raw value if it is not a date
+export function formatShortDate(date: string | null | undefined) {
+  if (!date) return "";
+  const parsed = parseISO(date);
+  return isValid(parsed) ? format(parsed, "EEE dd/MM", { locale: el }) : date;
+}
+
+export const STATUS_LABELS = {
+  todo: "Προς υλοποίηση",
+  inprogress: "Σε εξέλιξη",
+  done: "Ολοκληρώθηκε",
+} as const;
+
+export function getWorkTypeLabel(workType: string) {
+  return WORK_TYPES.find((t) => t.value === workType)?.label ?? "Γύρισμα";
+}
 
 // Radix Select cannot hold an empty value, so "no series" uses a sentinel
 export const NO_SERIES = "__none__";

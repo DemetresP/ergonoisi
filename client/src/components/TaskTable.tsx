@@ -21,7 +21,9 @@ import { FORMAT_LABELS, type Task } from "@shared/schema";
 import { useState } from "react";
 import { canChangeStatus, canEditTask, type TaskPermissionUser } from "@shared/permissions";
 import { useStudioSettings } from "@/hooks/useStudioSettings";
-import { FORMAT_BADGE_CLASSES, getSeriesColor } from "@/lib/studio";
+import { FORMAT_BADGE_CLASSES, STATUS_LABELS, formatShortDate, getSeriesColor, getWorkTypeLabel } from "@/lib/studio";
+
+type SortField = "shootDate" | "deliveryDate" | "publishDate";
 
 interface TaskTableProps {
   tasks: Task[];
@@ -35,7 +37,7 @@ interface TaskTableProps {
 export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, permissionUser }: TaskTableProps) {
   const userIsAdmin = permissionUser.isAdmin;
   const { series: seriesList } = useStudioSettings();
-  const [sortField, setSortField] = useState<"deliveryDate" | "shootDate" | null>("deliveryDate");
+  const [sortField, setSortField] = useState<SortField | null>("deliveryDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -53,7 +55,7 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, 
     return new Date(task.deliveryDate) < new Date();
   };
 
-  const handleSort = (field: "deliveryDate" | "shootDate") => {
+  const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -69,9 +71,9 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, 
           <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
             <Pencil className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-semibold mb-2">No tasks yet</h3>
+          <h3 className="text-lg font-semibold mb-2">Δεν υπάρχουν εργασίες</h3>
           <p className="text-sm text-muted-foreground">
-            Create your first task to start managing your film production schedule.
+            Πρόσθεσε την πρώτη εργασία ή φτιάξε το πρόγραμμα της εβδομάδας με AI.
           </p>
         </div>
       </div>
@@ -83,27 +85,36 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, 
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="font-semibold">Project</TableHead>
+            <TableHead className="font-semibold">Εργασία</TableHead>
             <TableHead
               className="font-semibold cursor-pointer hover-elevate"
               onClick={() => handleSort("shootDate")}
               data-testid="header-shoot-date"
             >
-              Production Date
+              Γύρισμα
             </TableHead>
             <TableHead
               className="font-semibold cursor-pointer hover-elevate"
               onClick={() => handleSort("deliveryDate")}
               data-testid="header-delivery-date"
             >
-              Delivery
+              Παράδοση
             </TableHead>
-            <TableHead className="font-semibold">Notes</TableHead>
-            <TableHead className="font-semibold">Assignee</TableHead>
-            <TableHead className="font-semibold">Work Type</TableHead>
-            <TableHead className="font-semibold">Status</TableHead>
+            <TableHead
+              className="font-semibold cursor-pointer hover-elevate"
+              onClick={() => handleSort("publishDate")}
+              data-testid="header-publish-date"
+            >
+              Δημοσίευση
+            </TableHead>
+            <TableHead className="font-semibold">Σημειώσεις</TableHead>
+            <TableHead className="font-semibold">Υπεύθυνος</TableHead>
+            <TableHead className="font-semibold">Είδος</TableHead>
+            <TableHead className="font-semibold">Κατάσταση</TableHead>
             <TableHead className="font-semibold">Μορφή</TableHead>
-            <TableHead className="font-semibold text-right">Actions</TableHead>
+            <TableHead className="font-semibold text-right">
+              <span className="sr-only">Ενέργειες</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -135,14 +146,27 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, 
                     </div>
                   )}
                 </TableCell>
-                <TableCell className="font-mono text-sm text-muted-foreground">
-                  {task.shootDate || "-"}
-                </TableCell>
-                <TableCell className="font-mono text-sm text-muted-foreground">
+                <TableCell className="font-mono text-sm text-muted-foreground whitespace-nowrap">
                   <div className="flex flex-col gap-0.5">
-                    <span>{task.deliveryDate || "-"}</span>
+                    <span>{formatShortDate(task.shootDate) || "-"}</span>
+                    {task.shootTime && (
+                      <span className="text-xs">{task.shootTime}</span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="font-mono text-sm text-muted-foreground whitespace-nowrap">
+                  <div className="flex flex-col gap-0.5">
+                    <span>{formatShortDate(task.deliveryDate) || "-"}</span>
                     {task.deliveryTime && (
                       <span className="text-xs">{task.deliveryTime}</span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="font-mono text-sm text-muted-foreground whitespace-nowrap">
+                  <div className="flex flex-col gap-0.5">
+                    <span>{formatShortDate(task.publishDate) || "-"}</span>
+                    {task.publishTime && (
+                      <span className="text-xs">{task.publishTime}</span>
                     )}
                   </div>
                 </TableCell>
@@ -157,9 +181,7 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, 
                 </TableCell>
                 <TableCell>{task.assignee}</TableCell>
                 <TableCell>
-                  {task.workType === 'shoot' ? 'Γύρισμα' :
-                   task.workType === 'edit' ? 'Μοντάζ' :
-                   'Φόρτωμα'}
+                  {getWorkTypeLabel(task.workType)}
                 </TableCell>
                 <TableCell>
                   <Select
@@ -170,7 +192,7 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, 
                     disabled={!statusEditable}
                   >
                     <SelectTrigger
-                      className="w-[140px] h-8 border-0 focus:ring-0 px-0 disabled:opacity-100 disabled:cursor-default"
+                      className="w-[160px] h-8 border-0 focus:ring-0 px-0 disabled:opacity-100 disabled:cursor-default"
                       title={statusEditable ? undefined : "Μόνο ο υπεύθυνος αλλάζει την κατάσταση"}
                       data-testid={`select-status-${task.id}`}
                     >
@@ -179,9 +201,9 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, 
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todo">To Do</SelectItem>
-                      <SelectItem value="inprogress">In Progress</SelectItem>
-                      <SelectItem value="done">Done</SelectItem>
+                      <SelectItem value="todo">{STATUS_LABELS.todo}</SelectItem>
+                      <SelectItem value="inprogress">{STATUS_LABELS.inprogress}</SelectItem>
+                      <SelectItem value="done">{STATUS_LABELS.done}</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
@@ -201,7 +223,7 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, 
                       size="icon"
                       onClick={() => onEdit(task)}
                       data-testid={`button-edit-${task.id}`}
-                      aria-label={editable ? "Edit task" : "View task"}
+                      aria-label={editable ? "Επεξεργασία" : "Προβολή"}
                     >
                       {editable ? <Pencil className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </Button>
@@ -211,7 +233,7 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, 
                         size="icon"
                         onClick={() => onHistory(task)}
                         data-testid={`button-history-${task.id}`}
-                        aria-label="Task history"
+                        aria-label="Ιστορικό"
                       >
                         <History className="w-4 h-4" />
                       </Button>
@@ -222,7 +244,7 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, 
                         size="icon"
                         onClick={() => onDelete(task.id)}
                         data-testid={`button-delete-${task.id}`}
-                        aria-label="Move task to trash"
+                        aria-label="Μεταφορά στον κάδο"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

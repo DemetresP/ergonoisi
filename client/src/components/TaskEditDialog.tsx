@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, Megaphone } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { Task, TaskFormat } from "@shared/schema";
 import { isAdmin } from "@shared/admin";
@@ -56,6 +56,8 @@ export function TaskEditDialog({
   const [shootTime, setShootTime] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
+  const [publishDate, setPublishDate] = useState("");
+  const [publishTime, setPublishTime] = useState("");
   const [notes, setNotes] = useState("");
   const [assignee, setAssignee] = useState("");
   const [workType, setWorkType] = useState<WorkType>("shoot");
@@ -72,6 +74,8 @@ export function TaskEditDialog({
       setShootTime(task.shootTime || "");
       setDeliveryDate(task.deliveryDate || "");
       setDeliveryTime(task.deliveryTime || "");
+      setPublishDate(task.publishDate || "");
+      setPublishTime(task.publishTime || "");
       setNotes(task.notes || "");
       setAssignee(task.assignee || "");
       setWorkType(task.workType || "shoot");
@@ -95,13 +99,15 @@ export function TaskEditDialog({
       guest: guest.trim() || null,
     };
 
-    // Only include assignee, production date/time and delivery date/time if user is admin
+    // Only include assignee and shoot, delivery and publish dates/times if user is admin
     if (userIsAdmin) {
       if (assignee) updates.assignee = assignee;
       updates.shootDate = shootDate || null;
       updates.shootTime = shootTime || null;
       updates.deliveryDate = deliveryDate || null;
       updates.deliveryTime = deliveryTime || null;
+      updates.publishDate = publishDate || null;
+      updates.publishTime = publishTime || null;
     }
 
     onSave(task.id, updates);
@@ -111,7 +117,7 @@ export function TaskEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto" data-testid="dialog-edit-task">
         <DialogHeader>
-          <DialogTitle>{readOnly ? "Task" : "Edit Task"}</DialogTitle>
+          <DialogTitle>{readOnly ? "Εργασία" : "Επεξεργασία εργασίας"}</DialogTitle>
           {readOnly && (
             <DialogDescription>Μόνο ο υπεύθυνος ή ο διαχειριστής αλλάζει αυτή την εργασία.</DialogDescription>
           )}
@@ -121,7 +127,7 @@ export function TaskEditDialog({
             <fieldset disabled={readOnly} className="grid gap-6 min-w-0">
             <div className="grid gap-2">
               <Label htmlFor="edit-title" className="text-sm font-semibold">
-                Project Title
+                Τίτλος
               </Label>
               <Input
                 id="edit-title"
@@ -196,7 +202,7 @@ export function TaskEditDialog({
               <div className="grid gap-2">
                 <Label htmlFor="edit-shootDate" className="text-sm font-semibold">
                   <Calendar className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-                  Production Date {!userIsAdmin && <span className="text-xs text-muted-foreground">(Admin only)</span>}
+                  Ημ. γυρίσματος {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
                 </Label>
                 <Input
                   id="edit-shootDate"
@@ -212,12 +218,12 @@ export function TaskEditDialog({
               <div className="grid gap-2">
                 <Label htmlFor="edit-shootTime" className="text-sm font-semibold">
                   <Clock className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-                  Production Time {!userIsAdmin && <span className="text-xs text-muted-foreground">(Admin only)</span>}
+                  Ώρα γυρίσματος {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
                 </Label>
                 <Input
                   id="edit-shootTime"
                   type="text"
-                  placeholder="HH:MM (e.g., 09:00)"
+                  placeholder="ΩΩ:ΛΛ (π.χ. 09:00)"
                   pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
                   value={shootTime}
                   onChange={(e) => setShootTime(e.target.value)}
@@ -233,7 +239,7 @@ export function TaskEditDialog({
               <div className="grid gap-2">
                 <Label htmlFor="edit-deliveryDate" className="text-sm font-semibold">
                   <Calendar className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-                  Delivery Date {!userIsAdmin && <span className="text-xs text-muted-foreground">(Admin only)</span>}
+                  Ημ. παράδοσης {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
                 </Label>
                 <Input
                   id="edit-deliveryDate"
@@ -249,12 +255,12 @@ export function TaskEditDialog({
               <div className="grid gap-2">
                 <Label htmlFor="edit-deliveryTime" className="text-sm font-semibold">
                   <Clock className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-                  Delivery Time {!userIsAdmin && <span className="text-xs text-muted-foreground">(Admin only)</span>}
+                  Ώρα παράδοσης {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
                 </Label>
                 <Input
                   id="edit-deliveryTime"
                   type="text"
-                  placeholder="HH:MM (e.g., 18:30)"
+                  placeholder="ΩΩ:ΛΛ (π.χ. 18:30)"
                   pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
                   value={deliveryTime}
                   onChange={(e) => setDeliveryTime(e.target.value)}
@@ -266,13 +272,50 @@ export function TaskEditDialog({
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-publishDate" className="text-sm font-semibold">
+                  <Megaphone className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+                  Ημ. δημοσίευσης {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
+                </Label>
+                <Input
+                  id="edit-publishDate"
+                  type="date"
+                  value={publishDate}
+                  onChange={(e) => setPublishDate(e.target.value)}
+                  data-testid="input-edit-publish-date"
+                  className="h-10 font-mono text-sm"
+                  disabled={!userIsAdmin}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="edit-publishTime" className="text-sm font-semibold">
+                  <Clock className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+                  Ώρα δημοσίευσης {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
+                </Label>
+                <Input
+                  id="edit-publishTime"
+                  type="text"
+                  placeholder="ΩΩ:ΛΛ (π.χ. 18:00)"
+                  pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
+                  value={publishTime}
+                  onChange={(e) => setPublishTime(e.target.value)}
+                  data-testid="input-edit-publish-time"
+                  className="h-10 font-mono text-sm"
+                  maxLength={5}
+                  disabled={!userIsAdmin}
+                />
+              </div>
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="edit-notes" className="text-sm font-semibold">
-                Notes
+                Σημειώσεις
               </Label>
               <Textarea
                 id="edit-notes"
-                placeholder="Add any additional notes or details about this project..."
+                placeholder="Λεπτομέρειες, θέμα, τοποθεσία, ό,τι χρειάζεται η ομάδα..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 data-testid="input-edit-notes"
@@ -283,7 +326,7 @@ export function TaskEditDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-assignee" className="text-sm font-semibold">
-                  Assigned To {!userIsAdmin && <span className="text-xs text-muted-foreground">(Admin only)</span>}
+                  Υπεύθυνος {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
                 </Label>
                 <Select value={assignee} onValueChange={setAssignee} disabled={!userIsAdmin}>
                   <SelectTrigger id="edit-assignee" data-testid="select-edit-assignee" className="h-10">
@@ -301,7 +344,7 @@ export function TaskEditDialog({
 
               <div className="grid gap-2">
                 <Label htmlFor="edit-workType" className="text-sm font-semibold">
-                  Είδος Εργασίας
+                  Είδος εργασίας
                 </Label>
                 <Select value={workType} onValueChange={(value: WorkType) => setWorkType(value)}>
                   <SelectTrigger id="edit-workType" data-testid="select-edit-work-type" className="h-10">
@@ -326,7 +369,7 @@ export function TaskEditDialog({
                 onClick={() => onOpenChange(false)}
                 data-testid="button-cancel-edit"
               >
-                {readOnly ? "Close" : "Cancel"}
+                {readOnly ? "Κλείσιμο" : "Άκυρο"}
               </Button>
               {!readOnly && (
                 <Button
@@ -334,7 +377,7 @@ export function TaskEditDialog({
                   disabled={isPending}
                   data-testid="button-save-edit"
                 >
-                  Save Changes
+                  Αποθήκευση
                 </Button>
               )}
             </div>

@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock, PlayCircle } from "lucide-react";
+import { STATUS_LABELS } from "@/lib/studio";
 
 interface StatusBadgeProps {
   status: 'todo' | 'inprogress' | 'done';
@@ -11,26 +12,26 @@ export function StatusBadge({ status, isOverdue }: StatusBadgeProps) {
     return (
       <Badge variant="destructive" className="gap-1.5" data-testid={`badge-status-overdue`}>
         <Clock className="w-3 h-3" />
-        Overdue
+        Εκπρόθεσμο
       </Badge>
     );
   }
 
   const config = {
     todo: {
-      label: 'To Do',
+      label: STATUS_LABELS.todo,
       icon: Clock,
       variant: 'secondary' as const,
       className: '',
     },
     inprogress: {
-      label: 'In Progress',
+      label: STATUS_LABELS.inprogress,
       icon: PlayCircle,
       variant: 'default' as const,
       className: '',
     },
     done: {
-      label: 'Done',
+      label: STATUS_LABELS.done,
       icon: CheckCircle,
       variant: 'outline' as const,
       className: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',

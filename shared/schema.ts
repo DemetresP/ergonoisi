@@ -29,6 +29,9 @@ export const insertTaskSchema = z.object({
   shootTime: z.string().nullable().optional(),
   deliveryDate: z.string().nullable().optional(),
   deliveryTime: z.string().nullable().optional(),
+  // When the reel/podcast goes live on the site or social
+  publishDate: z.string().nullable().optional(),
+  publishTime: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   assignee: z.string().min(1).optional(),
   workType: z.enum(["shoot", "edit", "upload"]).default("shoot"),
@@ -53,7 +56,15 @@ export const taskSchema = insertTaskSchema.extend({
 export type Task = z.infer<typeof taskSchema>;
 
 // Fields only the admin may change on an existing task
-export const ADMIN_ONLY_TASK_FIELDS = ["assignee", "shootDate", "shootTime", "deliveryDate", "deliveryTime"] as const;
+export const ADMIN_ONLY_TASK_FIELDS = [
+  "assignee",
+  "shootDate",
+  "shootTime",
+  "deliveryDate",
+  "deliveryTime",
+  "publishDate",
+  "publishTime",
+] as const;
 
 export interface TaskChange {
   field: string;

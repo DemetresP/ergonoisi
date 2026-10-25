@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Plus, Clock } from "lucide-react";
+import { Calendar, Plus, Clock, Megaphone } from "lucide-react";
 import { useState } from "react";
 import { isAdmin } from "@shared/admin";
 import type { TaskFormat } from "@shared/schema";
@@ -23,6 +23,8 @@ interface TaskFormProps {
     shootDate: string;
     deliveryDate: string;
     deliveryTime: string;
+    publishDate?: string;
+    publishTime?: string;
     notes: string;
     assignee?: string;
     workType: WorkType;
@@ -44,6 +46,8 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
   const [shootTime, setShootTime] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
+  const [publishDate, setPublishDate] = useState("");
+  const [publishTime, setPublishTime] = useState("");
   const [notes, setNotes] = useState("");
   const [assignee, setAssignee] = useState("");
   const [workType, setWorkType] = useState<WorkType>("shoot");
@@ -65,12 +69,14 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
       guest: guest.trim() || null,
     };
 
-    // Only include assignee, shootTime, deliveryDate, and deliveryTime if user is admin
+    // Only include assignee, times, delivery and publish dates if user is admin
     if (userIsAdmin) {
       if (assignee) taskData.assignee = assignee;
       taskData.shootTime = shootTime;
       taskData.deliveryDate = deliveryDate;
       taskData.deliveryTime = deliveryTime;
+      taskData.publishDate = publishDate;
+      taskData.publishTime = publishTime;
     }
 
     onSubmit(taskData);
@@ -81,6 +87,8 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
     setShootTime("");
     setDeliveryDate("");
     setDeliveryTime("");
+    setPublishDate("");
+    setPublishTime("");
     setNotes("");
     setAssignee("");
     setWorkType("shoot");
@@ -96,7 +104,7 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
           <div className="grid gap-6">
             <div className="grid gap-2">
               <Label htmlFor="title" className="text-sm font-semibold">
-                Project Title
+                Τίτλος
               </Label>
               <Input
                 id="title"
@@ -172,7 +180,7 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
               <div className="grid gap-2">
                 <Label htmlFor="shootDate" className="text-sm font-semibold">
                   <Calendar className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-                  Production Date
+                  Ημ. γυρίσματος
                 </Label>
                 <Input
                   id="shootDate"
@@ -187,12 +195,12 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
               <div className="grid gap-2">
                 <Label htmlFor="shootTime" className="text-sm font-semibold">
                   <Clock className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-                  Production Time {!userIsAdmin && <span className="text-xs text-muted-foreground">(Admin only)</span>}
+                  Ώρα γυρίσματος {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
                 </Label>
                 <Input
                   id="shootTime"
                   type="text"
-                  placeholder="HH:MM (e.g., 09:00)"
+                  placeholder="ΩΩ:ΛΛ (π.χ. 09:00)"
                   pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
                   value={shootTime}
                   onChange={(e) => setShootTime(e.target.value)}
@@ -208,7 +216,7 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
               <div className="grid gap-2">
                 <Label htmlFor="deliveryDate" className="text-sm font-semibold">
                   <Calendar className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-                  Delivery Date {!userIsAdmin && <span className="text-xs text-muted-foreground">(Admin only)</span>}
+                  Ημ. παράδοσης {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
                 </Label>
                 <Input
                   id="deliveryDate"
@@ -224,12 +232,12 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
               <div className="grid gap-2">
                 <Label htmlFor="deliveryTime" className="text-sm font-semibold">
                   <Clock className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-                  Delivery Time {!userIsAdmin && <span className="text-xs text-muted-foreground">(Admin only)</span>}
+                  Ώρα παράδοσης {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
                 </Label>
                 <Input
                   id="deliveryTime"
                   type="text"
-                  placeholder="HH:MM (e.g., 18:30)"
+                  placeholder="ΩΩ:ΛΛ (π.χ. 18:30)"
                   pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
                   value={deliveryTime}
                   onChange={(e) => setDeliveryTime(e.target.value)}
@@ -241,13 +249,50 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid gap-2">
+                <Label htmlFor="publishDate" className="text-sm font-semibold">
+                  <Megaphone className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+                  Ημ. δημοσίευσης {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
+                </Label>
+                <Input
+                  id="publishDate"
+                  type="date"
+                  value={publishDate}
+                  onChange={(e) => setPublishDate(e.target.value)}
+                  data-testid="input-publish-date"
+                  className="h-10 font-mono text-sm"
+                  disabled={!userIsAdmin}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="publishTime" className="text-sm font-semibold">
+                  <Clock className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+                  Ώρα δημοσίευσης {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
+                </Label>
+                <Input
+                  id="publishTime"
+                  type="text"
+                  placeholder="ΩΩ:ΛΛ (π.χ. 18:00)"
+                  pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
+                  value={publishTime}
+                  onChange={(e) => setPublishTime(e.target.value)}
+                  data-testid="input-publish-time"
+                  className="h-10 font-mono text-sm"
+                  maxLength={5}
+                  disabled={!userIsAdmin}
+                />
+              </div>
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="notes" className="text-sm font-semibold">
-                Notes
+                Σημειώσεις
               </Label>
               <Textarea
                 id="notes"
-                placeholder="Add any additional notes or details about this project..."
+                placeholder="Λεπτομέρειες, θέμα, τοποθεσία, ό,τι χρειάζεται η ομάδα..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 data-testid="input-notes"
@@ -258,11 +303,11 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="assignee" className="text-sm font-semibold">
-                  Assigned To {!userIsAdmin && <span className="text-xs text-muted-foreground">(Admin only)</span>}
+                  Υπεύθυνος {!userIsAdmin && <span className="text-xs text-muted-foreground">(μόνο admin)</span>}
                 </Label>
                 <Select value={assignee} onValueChange={setAssignee} disabled={!userIsAdmin}>
                   <SelectTrigger id="assignee" data-testid="select-assignee" className="h-10">
-                    <SelectValue placeholder={!userIsAdmin ? "—" : team.length ? "Select assignee" : "Πρόσθεσε ομάδα στις Ρυθμίσεις"} />
+                    <SelectValue placeholder={!userIsAdmin ? "—" : team.length ? "Επίλεξε υπεύθυνο" : "Πρόσθεσε ομάδα στις Ρυθμίσεις"} />
                   </SelectTrigger>
                   <SelectContent>
                     {team.map((member) => (
@@ -276,7 +321,7 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
 
               <div className="grid gap-2">
                 <Label htmlFor="workType" className="text-sm font-semibold">
-                  Είδος Εργασίας
+                  Είδος εργασίας
                 </Label>
                 <Select value={workType} onValueChange={(value: WorkType) => setWorkType(value)}>
                   <SelectTrigger id="workType" data-testid="select-work-type" className="h-10">
@@ -301,7 +346,7 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
                 className="gap-2"
               >
                 <Plus className="w-4 h-4" />
-                Add Task
+                Προσθήκη εργασίας
               </Button>
             </div>
           </div>
