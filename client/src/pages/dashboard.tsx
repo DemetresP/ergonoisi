@@ -342,7 +342,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b sticky top-0 bg-background z-50">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
               <Calendar className="w-5 h-5 text-primary-foreground" />
@@ -408,7 +408,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 md:px-8 py-6 md:py-8">
+      <main className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8">
         <div className="mb-6">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">
             Πρόγραμμα Παραγωγής

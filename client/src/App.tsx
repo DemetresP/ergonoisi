@@ -8,6 +8,7 @@ import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
 import NoAccess from "@/pages/no-access";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { useEffect } from "react";
 import { startIdTokenSync } from "@/lib/firebaseAuth";
 
@@ -58,6 +59,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router />
+        <InstallPrompt />
       </TooltipProvider>
     </QueryClientProvider>
   );

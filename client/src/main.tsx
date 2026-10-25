@@ -3,3 +3,12 @@ import App from "./App";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+// The service worker makes the app installable on phones; skip it in dev so Vite's HMR is untouched
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((error) => {
+      console.error("Service worker registration failed:", error);
+    });
+  });
+}

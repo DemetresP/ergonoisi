@@ -79,9 +79,10 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           {["Δευτέρα", "Τρίτη", "Τετάρτη", "Πέμπτη", "Παρασκευή", "Σάββατο", "Κυριακή"].map((day) => (
             <div
               key={day}
-              className="bg-muted p-2 text-center text-xs font-semibold text-muted-foreground"
+              className="bg-muted p-1 md:p-2 text-center text-xs font-semibold text-muted-foreground"
             >
-              {day}
+              <span className="hidden md:inline">{day}</span>
+              <span className="md:hidden">{day.slice(0, 3)}</span>
             </div>
           ))}
 
@@ -93,7 +94,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
             return (
               <div
                 key={idx}
-                className={`bg-background min-h-[100px] p-2 ${
+                className={`bg-background min-h-[72px] md:min-h-[100px] p-1 md:p-2 min-w-0 ${
                   !isCurrentMonth ? "opacity-40" : ""
                 } ${isToday ? "bg-accent/20" : ""}`}
                 data-testid={`calendar-day-${format(day, "yyyy-MM-dd")}`}
