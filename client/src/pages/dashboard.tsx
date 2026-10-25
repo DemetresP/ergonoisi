@@ -15,24 +15,41 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, Download, Upload, LogOut, LayoutList, CalendarDays, Sparkles } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Calendar, Download, Upload, LogOut, LayoutList, CalendarDays, Sparkles, Settings } from "lucide-react";
 import * as XLSX from "xlsx";
 import { TaskForm } from "@/components/TaskForm";
 import { TaskTable } from "@/components/TaskTable";
 import { WorkloadOverview } from "@/components/WorkloadOverview";
 import { TaskEditDialog } from "@/components/TaskEditDialog";
 import { CalendarView } from "@/components/CalendarView";
-import type { Task } from "@shared/schema";
+import { StudioSettingsDialog } from "@/components/StudioSettingsDialog";
+import { FORMAT_LABELS, type Task } from "@shared/schema";
+import { isAdmin } from "@shared/admin";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { firebaseLogout } from "@/lib/firebaseAuth";
+import { useStudioSettings } from "@/hooks/useStudioSettings";
+import { FORMATS } from "@/lib/studio";
+
+const ALL = "__all__";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { series: seriesList } = useStudioSettings();
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
   const [aiScheduleText, setAiScheduleText] = useState("");
+  const [formatFilter, setFormatFilter] = useState(ALL);
+  const [seriesFilter, setSeriesFilter] = useState(ALL);
 
   const handleLogout = async () => {
     try {
@@ -47,6 +64,16 @@ export default function Dashboard() {
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
   });
+
+  const filteredTasks = tasks.filter(
+    (task) =>
+      (formatFilter === ALL || task.format === formatFilter) &&
+      (seriesFilter === ALL || task.series === seriesFilter),
+  );
+
+  const guestSuggestions = Array.from(
+    new Set(tasks.map((task) => task.guest).filter((guest): guest is string => Boolean(guest))),
+  ).sort((a, b) => a.localeCompare(b, "el"));
 
   const createTask = useMutation({
     mutationFn: async (taskData: any) => {
@@ -169,7 +196,9 @@ export default function Dashboard() {
       Assignee: task.assignee,
       "Work Type": getWorkTypeLabel(task.workType),
       Status: task.status,
-      Tag: task.tag,
+      Format: FORMAT_LABELS[task.format],
+      Series: task.series || "",
+      Guest: task.guest || "",
       Notes: task.notes || "",
     }));
 
@@ -224,7 +253,9 @@ export default function Dashboard() {
             assignee: row.Assignee || row.assignee,
             workType: parseWorkType(row["Work Type"] || row.workType),
             status: row.Status || row.status || "todo",
-            tag: row.Tag || row.tag || "tlife",
+            format: String(row.Format || row.format || "").toLowerCase().includes("podcast") ? "podcast" : "reel",
+            series: row.Series || row.series || null,
+            guest: row.Guest || row.guest || null,
           });
         }
 
@@ -329,6 +360,16 @@ export default function Dashboard() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              {isAdmin(user?.email) && (
+                <DropdownMenuItem
+                  onSelect={() => setIsSettingsOpen(true)}
+                  className="cursor-pointer"
+                  data-testid="button-studio-settings"
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Ρυθμίσεις studio
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault();
@@ -365,7 +406,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Textarea
-                placeholder='π.χ. "Τρίτη γύρισμα TLIFE με Δημήτρη, παράδοση Πέμπτη"'
+                placeholder='π.χ. "Τρίτη 11:00 γύρισμα οικονομικό reel με Μονεμβασιώτη, μοντάζ Τετάρτη, ανέβασμα Πέμπτη"'
                 value={aiScheduleText}
                 onChange={(e) => setAiScheduleText(e.target.value)}
                 className="min-h-24"
@@ -384,9 +425,37 @@ export default function Dashboard() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-4">
-              <CardTitle className="text-lg font-semibold">Tasks</CardTitle>
-              <div className="flex gap-2">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4 space-y-0 pb-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <CardTitle className="text-lg font-semibold">Tasks</CardTitle>
+                <Select value={formatFilter} onValueChange={setFormatFilter}>
+                  <SelectTrigger className="h-9 w-[130px]" data-testid="filter-format">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL}>Όλες οι μορφές</SelectItem>
+                    {FORMATS.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>
+                        {f.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={seriesFilter} onValueChange={setSeriesFilter}>
+                  <SelectTrigger className="h-9 w-[150px]" data-testid="filter-series">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL}>Όλες οι σειρές</SelectItem>
+                    {seriesList.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-wrap gap-2">
                 <div className="flex rounded-md border">
                   <Button
                     variant={viewMode === "table" ? "default" : "ghost"}
@@ -435,7 +504,7 @@ export default function Dashboard() {
                 </div>
               ) : viewMode === "table" ? (
                 <TaskTable
-                  tasks={tasks}
+                  tasks={filteredTasks}
                   onUpdateStatus={(taskId, status) =>
                     updateTask.mutate({ id: taskId, updates: { status } })
                   }
@@ -448,7 +517,7 @@ export default function Dashboard() {
                 />
               ) : (
                 <CalendarView
-                  tasks={tasks}
+                  tasks={filteredTasks}
                   onTaskClick={(task) => {
                     setEditingTask(task);
                     setIsEditDialogOpen(true);
@@ -464,6 +533,7 @@ export default function Dashboard() {
             onSubmit={(taskData) => createTask.mutate(taskData)}
             isPending={createTask.isPending}
             userEmail={user?.email}
+            guestSuggestions={guestSuggestions}
           />
         </div>
       </main>
@@ -475,7 +545,10 @@ export default function Dashboard() {
         onSave={(taskId, updates) => updateTask.mutate({ id: taskId, updates })}
         isPending={updateTask.isPending}
         userEmail={user?.email}
+        guestSuggestions={guestSuggestions}
       />
+
+      <StudioSettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </div>
   );
 }

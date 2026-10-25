@@ -3,7 +3,9 @@ import { ChevronLeft, ChevronRight, Camera, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, parseISO } from "date-fns";
-import type { Task } from "@shared/schema";
+import { FORMAT_LABELS, type Task } from "@shared/schema";
+import { useStudioSettings } from "@/hooks/useStudioSettings";
+import { FORMAT_BADGE_CLASSES, getSeriesColor } from "@/lib/studio";
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -11,6 +13,7 @@ interface CalendarViewProps {
 }
 
 export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
+  const { series: seriesList } = useStudioSettings();
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const monthStart = startOfMonth(currentMonth);
@@ -122,19 +125,21 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                             <Package className="w-3 h-3 shrink-0" />
                           )}
                           <span className="truncate flex-1">
+                            {taskType === "shoot" && task.shootTime && (
+                              <span className="font-mono mr-1">{task.shootTime}</span>
+                            )}
                             {taskType === "delivery" && task.deliveryTime && (
                               <span className="font-mono mr-1">{task.deliveryTime}</span>
                             )}
                             {task.title}
                           </span>
-                          <span className={`text-[10px] font-semibold ml-1 shrink-0 px-1 py-0.5 rounded ${
-                            task.tag === 'newsit'
-                              ? 'bg-black text-white dark:bg-black dark:text-white'
-                              : task.tag === 'zappit'
-                              ? 'bg-purple-500 text-white dark:bg-purple-600 dark:text-white'
-                              : 'bg-pink-500 text-white dark:bg-pink-600 dark:text-white'
-                          }`}>
-                            {task.tag}
+                          <span
+                            className={`text-[10px] font-semibold ml-1 shrink-0 px-1 py-0.5 rounded ${
+                              task.series ? getSeriesColor(task.series, seriesList) : FORMAT_BADGE_CLASSES[task.format]
+                            }`}
+                            title={task.series ? `${FORMAT_LABELS[task.format]} · ${task.series}` : FORMAT_LABELS[task.format]}
+                          >
+                            {task.series || FORMAT_LABELS[task.format]}
                           </span>
                         </Badge>
                       </button>

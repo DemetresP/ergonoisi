@@ -33,7 +33,9 @@ export const insertTaskSchema = z.object({
   assignee: z.string().min(1).optional(),
   workType: z.enum(["shoot", "edit", "upload"]).default("shoot"),
   status: z.enum(["todo", "inprogress", "done"]).default("todo"),
-  tag: z.enum(["newsit", "tlife", "zappit"]).default("tlife"),
+  format: z.enum(["reel", "podcast"]).default("reel"),
+  series: z.string().nullable().optional(),
+  guest: z.string().nullable().optional(),
   userId: z.string(),
 });
 
@@ -46,3 +48,17 @@ export const taskSchema = insertTaskSchema.extend({
 });
 
 export type Task = z.infer<typeof taskSchema>;
+export type TaskFormat = Task["format"];
+
+export const FORMAT_LABELS: Record<TaskFormat, string> = {
+  reel: "Reel",
+  podcast: "Podcast",
+};
+
+// Studio lists managed by the admin from the app (team members and series)
+export const studioSettingsSchema = z.object({
+  team: z.array(z.string().trim().min(1)).default([]),
+  series: z.array(z.string().trim().min(1)).default([]),
+});
+
+export type StudioSettings = z.infer<typeof studioSettingsSchema>;

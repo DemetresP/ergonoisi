@@ -4,7 +4,10 @@ import {
   type UpsertUser,
   type Task,
   type InsertTask,
+  type StudioSettings,
 } from "@shared/schema";
+
+const DEFAULT_SETTINGS: StudioSettings = { team: [], series: ["Οικονομικό"] };
 
 function getDb() {
   // Avoid crashing the whole server at startup if Firebase Admin isn't configured.
@@ -26,6 +29,9 @@ export interface IStorage {
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, updates: Partial<Task>): Promise<Task | undefined>;
   deleteTask(id: string): Promise<boolean>;
+
+  getSettings(): Promise<StudioSettings>;
+  saveSettings(settings: StudioSettings): Promise<StudioSettings>;
 }
 
 function toPlain<T = any>(doc: FirebaseFirestore.DocumentSnapshot<FirebaseFirestore.DocumentData>) {
@@ -38,6 +44,15 @@ function toPlain<T = any>(doc: FirebaseFirestore.DocumentSnapshot<FirebaseFirest
     }
   });
   return { id: doc.id, ...data } as T;
+}
+
+// Tasks from before the HuffPost studio carry a newsit/tlife/zappit `tag` and no format;
+// they are shown as reels without a series.
+function toTask(doc: FirebaseFirestore.DocumentSnapshot<FirebaseFirestore.DocumentData>) {
+  const task = toPlain<Task & { tag?: string }>(doc);
+  if (!task) return undefined;
+  const { tag: _legacyTag, ...rest } = task;
+  return { ...rest, format: rest.format || "reel" } as Task;
 }
 
 export class FirestoreStorage implements IStorage {
@@ -60,13 +75,13 @@ export class FirestoreStorage implements IStorage {
   async getTasks(): Promise<Task[]> {
     const db = getDb();
     const snap = await db.collection("tasks").orderBy("createdAt").get();
-    return snap.docs.map((d) => toPlain<Task>(d)!).filter(Boolean);
+    return snap.docs.map((d) => toTask(d)!).filter(Boolean);
   }
 
   async getTask(id: string): Promise<Task | undefined> {
     const db = getDb();
     const doc = await db.collection("tasks").doc(id).get();
-    return toPlain<Task>(doc);
+    return toTask(doc);
   }
 
   async createTask(taskData: InsertTask): Promise<Task> {
@@ -75,15 +90,21 @@ export class FirestoreStorage implements IStorage {
     const now = admin.firestore.FieldValue.serverTimestamp();
     await ref.set({ ...taskData, createdAt: now, updatedAt: now });
     const saved = await ref.get();
-    return toPlain<Task>(saved)!;
+    return toTask(saved)!;
   }
 
   async updateTask(id: string, updates: Partial<Task>): Promise<Task | undefined> {
     const db = getDb();
     const ref = db.collection("tasks").doc(id);
-    await ref.update({ ...updates, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    const doc = await ref.get();
+    if (!doc.exists) return undefined;
+    await ref.update({
+      ...updates,
+      tag: admin.firestore.FieldValue.delete(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     const updated = await ref.get();
-    return toPlain<Task>(updated);
+    return toTask(updated);
   }
 
   async deleteTask(id: string): Promise<boolean> {
@@ -93,6 +114,22 @@ export class FirestoreStorage implements IStorage {
     if (!doc.exists) return false;
     await ref.delete();
     return true;
+  }
+
+  async getSettings(): Promise<StudioSettings> {
+    const db = getDb();
+    const doc = await db.collection("settings").doc("studio").get();
+    const data = doc.exists ? doc.data() : undefined;
+    return {
+      team: data?.team ?? DEFAULT_SETTINGS.team,
+      series: data?.series ?? DEFAULT_SETTINGS.series,
+    };
+  }
+
+  async saveSettings(settings: StudioSettings): Promise<StudioSettings> {
+    const db = getDb();
+    await db.collection("settings").doc("studio").set(settings);
+    return settings;
   }
 }
 

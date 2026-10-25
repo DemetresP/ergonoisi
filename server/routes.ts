@@ -1,7 +1,7 @@
 ﻿import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertTaskSchema } from "@shared/schema";
+import { insertTaskSchema, studioSettingsSchema } from "@shared/schema";
 import { z } from "zod";
 import { isAdmin } from "@shared/admin";
 import { parseWeeklyScheduleToTasks } from "./openai";
@@ -46,6 +46,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Studio settings (team members, series) - readable by all, editable by admin
+  app.get("/api/settings", isAuthenticated, async (_req: any, res) => {
+    try {
+      res.json(await storage.getSettings());
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+      res.status(500).json({ message: "Failed to fetch settings" });
+    }
+  });
+
+  app.put("/api/settings", isAuthenticated, async (req: any, res) => {
+    try {
+      if (!isAdmin(req.user?.email)) {
+        return res.status(403).json({ message: "Only admin can change studio settings" });
+      }
+      const settings = studioSettingsSchema.parse(req.body);
+      const unique = (list: string[]) => Array.from(new Set(list));
+      res.json(await storage.saveSettings({ team: unique(settings.team), series: unique(settings.series) }));
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error saving settings:", error);
+      res.status(500).json({ message: "Failed to save settings" });
     }
   });
 
@@ -188,7 +215,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "scheduleText is required" });
       }
 
-      const parsedTasks = await parseWeeklyScheduleToTasks(scheduleText);
+      const settings = await storage.getSettings();
+      const parsedTasks = await parseWeeklyScheduleToTasks(scheduleText, settings);
 
       const createdTasks = [];
       for (const parsedTask of parsedTasks) {
@@ -196,13 +224,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           title: parsedTask.title,
           workType: parsedTask.workType,
           status: "todo",
-          tag: parsedTask.tag || "tlife",
+          format: parsedTask.format === "podcast" ? "podcast" : "reel",
           userId,
         };
+        if (parsedTask.series && settings.series.includes(parsedTask.series)) taskData.series = parsedTask.series;
+        if (parsedTask.guest) taskData.guest = parsedTask.guest;
 
         if (isAdmin(userEmail)) {
           if (parsedTask.assignee) taskData.assignee = parsedTask.assignee;
           if (parsedTask.shootDate) taskData.shootDate = parsedTask.shootDate;
+          if (parsedTask.shootTime) taskData.shootTime = parsedTask.shootTime;
           if (parsedTask.deliveryDate) taskData.deliveryDate = parsedTask.deliveryDate;
         }
 

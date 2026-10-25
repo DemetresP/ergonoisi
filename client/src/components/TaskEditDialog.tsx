@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/select";
 import { Calendar, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
-import type { Task } from "@shared/schema";
+import type { Task, TaskFormat } from "@shared/schema";
 import { isAdmin } from "@shared/admin";
+import { useStudioSettings } from "@/hooks/useStudioSettings";
+import { FORMATS, NO_SERIES, WORK_TYPES, type WorkType } from "@/lib/studio";
 
 interface TaskEditDialogProps {
   task: Task | null;
@@ -27,15 +29,13 @@ interface TaskEditDialogProps {
   onSave: (taskId: string, updates: Partial<Task>) => void;
   isPending?: boolean;
   userEmail?: string | null;
+  guestSuggestions?: string[];
 }
 
-const TEAM_MEMBERS = ["Δημήτρης", "Γιάννης", "Βασιλική"];
-const TAGS = ["newsit", "tlife", "zappit"] as const;
-const WORK_TYPES = [
-  { value: "shoot", label: "Γύρισμα" },
-  { value: "edit", label: "Μοντάζ" },
-  { value: "upload", label: "Φόρτωμα" },
-] as const;
+// Keep a value that is no longer in the admin's list selectable (e.g. older tasks)
+function withCurrent(list: string[], current: string) {
+  return current && !list.includes(current) ? [...list, current] : list;
+}
 
 export function TaskEditDialog({
   task,
@@ -44,7 +44,9 @@ export function TaskEditDialog({
   onSave,
   isPending,
   userEmail,
+  guestSuggestions = [],
 }: TaskEditDialogProps) {
+  const { team, series: seriesList } = useStudioSettings();
   const [title, setTitle] = useState("");
   const [shootDate, setShootDate] = useState("");
   const [shootTime, setShootTime] = useState("");
@@ -52,9 +54,11 @@ export function TaskEditDialog({
   const [deliveryTime, setDeliveryTime] = useState("");
   const [notes, setNotes] = useState("");
   const [assignee, setAssignee] = useState("");
-  const [workType, setWorkType] = useState<"shoot" | "edit" | "upload">("shoot");
-  const [tag, setTag] = useState<"newsit" | "tlife" | "zappit">("tlife");
-  
+  const [workType, setWorkType] = useState<WorkType>("shoot");
+  const [format, setFormat] = useState<TaskFormat>("reel");
+  const [series, setSeries] = useState(NO_SERIES);
+  const [guest, setGuest] = useState("");
+
   const userIsAdmin = isAdmin(userEmail);
 
   useEffect(() => {
@@ -66,10 +70,10 @@ export function TaskEditDialog({
       setDeliveryTime(task.deliveryTime || "");
       setNotes(task.notes || "");
       setAssignee(task.assignee || "");
-      const validWorkType = task.workType as "shoot" | "edit" | "upload" | undefined;
-      setWorkType(validWorkType || "shoot");
-      const validTag = task.tag as "newsit" | "tlife" | "zappit" | undefined;
-      setTag(validTag || "tlife");
+      setWorkType(task.workType || "shoot");
+      setFormat(task.format || "reel");
+      setSeries(task.series || NO_SERIES);
+      setGuest(task.guest || "");
     }
   }, [task]);
 
@@ -83,12 +87,14 @@ export function TaskEditDialog({
       shootDate: shootDate || null,
       notes: notes || null,
       workType,
-      tag,
+      format,
+      series: series === NO_SERIES ? null : series,
+      guest: guest.trim() || null,
     };
-    
+
     // Only include assignee, shootTime, deliveryDate, and deliveryTime if user is admin
     if (userIsAdmin) {
-      updates.assignee = assignee;
+      if (assignee) updates.assignee = assignee;
       updates.shootTime = shootTime || null;
       updates.deliveryDate = deliveryDate || null;
       updates.deliveryTime = deliveryTime || null;
@@ -99,7 +105,7 @@ export function TaskEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]" data-testid="dialog-edit-task">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto" data-testid="dialog-edit-task">
         <DialogHeader>
           <DialogTitle>Edit Task</DialogTitle>
         </DialogHeader>
@@ -117,6 +123,65 @@ export function TaskEditDialog({
                 data-testid="input-edit-title"
                 className="h-10"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-format" className="text-sm font-semibold">
+                  Μορφή
+                </Label>
+                <Select value={format} onValueChange={(value: TaskFormat) => setFormat(value)}>
+                  <SelectTrigger id="edit-format" data-testid="select-edit-format" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FORMATS.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>
+                        {f.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="edit-series" className="text-sm font-semibold">
+                  Σειρά
+                </Label>
+                <Select value={series} onValueChange={setSeries}>
+                  <SelectTrigger id="edit-series" data-testid="select-edit-series" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_SERIES}>—</SelectItem>
+                    {withCurrent(seriesList, task?.series || "").map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-guest" className="text-sm font-semibold">
+                Δημοσιογράφος / Καλεσμένος
+              </Label>
+              <Input
+                id="edit-guest"
+                list="edit-guest-suggestions"
+                placeholder="π.χ. Μονεμβασιώτης"
+                value={guest}
+                onChange={(e) => setGuest(e.target.value)}
+                data-testid="input-edit-guest"
+                className="h-10"
+              />
+              <datalist id="edit-guest-suggestions">
+                {guestSuggestions.map((g) => (
+                  <option key={g} value={g} />
+                ))}
+              </datalist>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -206,7 +271,7 @@ export function TaskEditDialog({
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-assignee" className="text-sm font-semibold">
                   Assigned To {!userIsAdmin && <span className="text-xs text-muted-foreground">(Admin only)</span>}
@@ -216,7 +281,7 @@ export function TaskEditDialog({
                     <SelectValue placeholder="—" />
                   </SelectTrigger>
                   <SelectContent>
-                    {TEAM_MEMBERS.map((member) => (
+                    {withCurrent(team, task?.assignee || "").map((member) => (
                       <SelectItem key={member} value={member}>
                         {member}
                       </SelectItem>
@@ -229,7 +294,7 @@ export function TaskEditDialog({
                 <Label htmlFor="edit-workType" className="text-sm font-semibold">
                   Είδος Εργασίας
                 </Label>
-                <Select value={workType} onValueChange={(value: "shoot" | "edit" | "upload") => setWorkType(value)}>
+                <Select value={workType} onValueChange={(value: WorkType) => setWorkType(value)}>
                   <SelectTrigger id="edit-workType" data-testid="select-edit-work-type" className="h-10">
                     <SelectValue />
                   </SelectTrigger>
@@ -237,24 +302,6 @@ export function TaskEditDialog({
                     {WORK_TYPES.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="edit-tag" className="text-sm font-semibold">
-                  Tag
-                </Label>
-                <Select value={tag} onValueChange={(value: "newsit" | "tlife" | "zappit") => setTag(value)}>
-                  <SelectTrigger id="edit-tag" data-testid="select-edit-tag" className="h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TAGS.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
                       </SelectItem>
                     ))}
                   </SelectContent>

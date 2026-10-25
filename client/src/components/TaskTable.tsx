@@ -17,9 +17,11 @@ import {
 } from "@/components/ui/select";
 import { Pencil, Trash2 } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
-import type { Task } from "@shared/schema";
+import { FORMAT_LABELS, type Task } from "@shared/schema";
 import { useState } from "react";
 import { isAdmin } from "@shared/admin";
+import { useStudioSettings } from "@/hooks/useStudioSettings";
+import { FORMAT_BADGE_CLASSES, getSeriesColor } from "@/lib/studio";
 
 interface TaskTableProps {
   tasks: Task[];
@@ -31,6 +33,7 @@ interface TaskTableProps {
 
 export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, userEmail }: TaskTableProps) {
   const userIsAdmin = isAdmin(userEmail);
+  const { series: seriesList } = useStudioSettings();
   const [sortField, setSortField] = useState<"deliveryDate" | "shootDate" | null>("deliveryDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
@@ -98,7 +101,7 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, userEmail }
             <TableHead className="font-semibold">Assignee</TableHead>
             <TableHead className="font-semibold">Work Type</TableHead>
             <TableHead className="font-semibold">Status</TableHead>
-            <TableHead className="font-semibold">Tag</TableHead>
+            <TableHead className="font-semibold">Μορφή</TableHead>
             <TableHead className="font-semibold text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -111,7 +114,24 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, userEmail }
                 className="hover-elevate transition-colors duration-150"
                 data-testid={`task-row-${task.id}`}
               >
-                <TableCell className="font-medium">{task.title}</TableCell>
+                <TableCell>
+                  <div className="font-medium">{task.title}</div>
+                  {(task.series || task.guest) && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      {task.series && (
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] px-1.5 py-0 ${getSeriesColor(task.series, seriesList)}`}
+                        >
+                          {task.series}
+                        </Badge>
+                      )}
+                      {task.guest && (
+                        <span className="text-xs text-muted-foreground">με {task.guest}</span>
+                      )}
+                    </div>
+                  )}
+                </TableCell>
                 <TableCell className="font-mono text-sm text-muted-foreground">
                   {task.shootDate || "-"}
                 </TableCell>
@@ -161,18 +181,12 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, userEmail }
                   </Select>
                 </TableCell>
                 <TableCell>
-                  <Badge 
-                    variant="outline" 
-                    className={`font-mono text-xs ${
-                      task.tag === 'newsit' 
-                        ? 'bg-black text-white border-black dark:bg-black dark:text-white dark:border-white' 
-                        : task.tag === 'zappit'
-                        ? 'bg-purple-500 text-white border-purple-500 dark:bg-purple-600 dark:text-white dark:border-purple-400'
-                        : 'bg-pink-500 text-white border-pink-500 dark:bg-pink-600 dark:text-white dark:border-pink-400'
-                    }`}
-                    data-testid={`badge-tag-${task.id}`}
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${FORMAT_BADGE_CLASSES[task.format]}`}
+                    data-testid={`badge-format-${task.id}`}
                   >
-                    {task.tag}
+                    {FORMAT_LABELS[task.format]}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">

@@ -13,6 +13,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Plus, Clock } from "lucide-react";
 import { useState } from "react";
 import { isAdmin } from "@shared/admin";
+import type { TaskFormat } from "@shared/schema";
+import { useStudioSettings } from "@/hooks/useStudioSettings";
+import { FORMATS, NO_SERIES, WORK_TYPES, type WorkType } from "@/lib/studio";
 
 interface TaskFormProps {
   onSubmit: (task: {
@@ -21,57 +24,57 @@ interface TaskFormProps {
     deliveryDate: string;
     deliveryTime: string;
     notes: string;
-    assignee: string;
-    workType: "shoot" | "edit" | "upload";
-    tag: "newsit" | "tlife" | "zappit";
+    assignee?: string;
+    workType: WorkType;
+    format: TaskFormat;
+    series: string | null;
+    guest: string | null;
   }) => void;
   isPending?: boolean;
   userEmail?: string | null;
+  guestSuggestions?: string[];
 }
 
-const TEAM_MEMBERS = ["Δημήτρης", "Γιάννης", "Βασιλική"];
-const TAGS = ["newsit", "tlife", "zappit"] as const;
-const WORK_TYPES = [
-  { value: "shoot", label: "Γύρισμα" },
-  { value: "edit", label: "Μοντάζ" },
-  { value: "upload", label: "Φόρτωμα" },
-] as const;
-
-export function TaskForm({ onSubmit, isPending, userEmail }: TaskFormProps) {
+export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = [] }: TaskFormProps) {
   const userIsAdmin = isAdmin(userEmail);
-  
+  const { team, series: seriesList } = useStudioSettings();
+
   const [title, setTitle] = useState("");
   const [shootDate, setShootDate] = useState("");
   const [shootTime, setShootTime] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
   const [notes, setNotes] = useState("");
-  const [assignee, setAssignee] = useState(userIsAdmin ? TEAM_MEMBERS[0] : "");
-  const [workType, setWorkType] = useState<"shoot" | "edit" | "upload">("shoot");
-  const [tag, setTag] = useState<"newsit" | "tlife" | "zappit">("tlife");
+  const [assignee, setAssignee] = useState("");
+  const [workType, setWorkType] = useState<WorkType>("shoot");
+  const [format, setFormat] = useState<TaskFormat>("reel");
+  const [series, setSeries] = useState(NO_SERIES);
+  const [guest, setGuest] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Build task data, excluding restricted fields for non-admin users
     const taskData: any = {
       title,
       shootDate,
       notes,
       workType,
-      tag,
+      format,
+      series: series === NO_SERIES ? null : series,
+      guest: guest.trim() || null,
     };
-    
+
     // Only include assignee, shootTime, deliveryDate, and deliveryTime if user is admin
     if (userIsAdmin) {
-      taskData.assignee = assignee;
+      if (assignee) taskData.assignee = assignee;
       taskData.shootTime = shootTime;
       taskData.deliveryDate = deliveryDate;
       taskData.deliveryTime = deliveryTime;
     }
-    
+
     onSubmit(taskData);
-    
+
     // Reset form
     setTitle("");
     setShootDate("");
@@ -79,9 +82,11 @@ export function TaskForm({ onSubmit, isPending, userEmail }: TaskFormProps) {
     setDeliveryDate("");
     setDeliveryTime("");
     setNotes("");
-    setAssignee(userIsAdmin ? TEAM_MEMBERS[0] : "");
+    setAssignee("");
     setWorkType("shoot");
-    setTag("tlife");
+    setFormat("reel");
+    setSeries(NO_SERIES);
+    setGuest("");
   };
 
   return (
@@ -95,13 +100,72 @@ export function TaskForm({ onSubmit, isPending, userEmail }: TaskFormProps) {
               </Label>
               <Input
                 id="title"
-                placeholder="e.g., Shoot with Tasos"
+                placeholder="π.χ. Οικονομικό reel - Μονεμβασιώτης"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
                 data-testid="input-title"
                 className="h-10"
               />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid gap-2">
+                <Label htmlFor="format" className="text-sm font-semibold">
+                  Μορφή
+                </Label>
+                <Select value={format} onValueChange={(value: TaskFormat) => setFormat(value)}>
+                  <SelectTrigger id="format" data-testid="select-format" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FORMATS.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>
+                        {f.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="series" className="text-sm font-semibold">
+                  Σειρά
+                </Label>
+                <Select value={series} onValueChange={setSeries}>
+                  <SelectTrigger id="series" data-testid="select-series" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_SERIES}>—</SelectItem>
+                    {seriesList.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="guest" className="text-sm font-semibold">
+                  Δημοσιογράφος / Καλεσμένος
+                </Label>
+                <Input
+                  id="guest"
+                  list="guest-suggestions"
+                  placeholder="π.χ. Μονεμβασιώτης"
+                  value={guest}
+                  onChange={(e) => setGuest(e.target.value)}
+                  data-testid="input-guest"
+                  className="h-10"
+                />
+                <datalist id="guest-suggestions">
+                  {guestSuggestions.map((g) => (
+                    <option key={g} value={g} />
+                  ))}
+                </datalist>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -191,17 +255,17 @@ export function TaskForm({ onSubmit, isPending, userEmail }: TaskFormProps) {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="assignee" className="text-sm font-semibold">
                   Assigned To {!userIsAdmin && <span className="text-xs text-muted-foreground">(Admin only)</span>}
                 </Label>
                 <Select value={assignee} onValueChange={setAssignee} disabled={!userIsAdmin}>
                   <SelectTrigger id="assignee" data-testid="select-assignee" className="h-10">
-                    <SelectValue placeholder={!userIsAdmin ? "—" : "Select assignee"} />
+                    <SelectValue placeholder={!userIsAdmin ? "—" : team.length ? "Select assignee" : "Πρόσθεσε ομάδα στις Ρυθμίσεις"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {TEAM_MEMBERS.map((member) => (
+                    {team.map((member) => (
                       <SelectItem key={member} value={member}>
                         {member}
                       </SelectItem>
@@ -214,7 +278,7 @@ export function TaskForm({ onSubmit, isPending, userEmail }: TaskFormProps) {
                 <Label htmlFor="workType" className="text-sm font-semibold">
                   Είδος Εργασίας
                 </Label>
-                <Select value={workType} onValueChange={(value: "shoot" | "edit" | "upload") => setWorkType(value)}>
+                <Select value={workType} onValueChange={(value: WorkType) => setWorkType(value)}>
                   <SelectTrigger id="workType" data-testid="select-work-type" className="h-10">
                     <SelectValue />
                   </SelectTrigger>
@@ -222,24 +286,6 @@ export function TaskForm({ onSubmit, isPending, userEmail }: TaskFormProps) {
                     {WORK_TYPES.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="tag" className="text-sm font-semibold">
-                  Tag
-                </Label>
-                <Select value={tag} onValueChange={(value: "newsit" | "tlife" | "zappit") => setTag(value)}>
-                  <SelectTrigger id="tag" data-testid="select-tag" className="h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TAGS.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
                       </SelectItem>
                     ))}
                   </SelectContent>
