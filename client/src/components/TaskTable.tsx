@@ -15,11 +15,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Trash2 } from "lucide-react";
+import { Eye, History, Pencil, Trash2 } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { FORMAT_LABELS, type Task } from "@shared/schema";
 import { useState } from "react";
-import { isAdmin } from "@shared/admin";
+import { canChangeStatus, canEditTask, type TaskPermissionUser } from "@shared/permissions";
 import { useStudioSettings } from "@/hooks/useStudioSettings";
 import { FORMAT_BADGE_CLASSES, getSeriesColor } from "@/lib/studio";
 
@@ -28,21 +28,22 @@ interface TaskTableProps {
   onUpdateStatus: (taskId: string, status: "todo" | "inprogress" | "done") => void;
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
-  userEmail?: string | null;
+  onHistory: (task: Task) => void;
+  permissionUser: TaskPermissionUser;
 }
 
-export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, userEmail }: TaskTableProps) {
-  const userIsAdmin = isAdmin(userEmail);
+export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, permissionUser }: TaskTableProps) {
+  const userIsAdmin = permissionUser.isAdmin;
   const { series: seriesList } = useStudioSettings();
   const [sortField, setSortField] = useState<"deliveryDate" | "shootDate" | null>("deliveryDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   const sortedTasks = [...tasks].sort((a, b) => {
     if (!sortField) return 0;
-    
+
     const aValue = a[sortField] || "9999-12-31";
     const bValue = b[sortField] || "9999-12-31";
-    
+
     const comparison = aValue.localeCompare(bValue);
     return sortDirection === "asc" ? comparison : -comparison;
   });
@@ -83,14 +84,14 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, userEmail }
         <TableHeader>
           <TableRow>
             <TableHead className="font-semibold">Project</TableHead>
-            <TableHead 
+            <TableHead
               className="font-semibold cursor-pointer hover-elevate"
               onClick={() => handleSort("shootDate")}
               data-testid="header-shoot-date"
             >
               Production Date
             </TableHead>
-            <TableHead 
+            <TableHead
               className="font-semibold cursor-pointer hover-elevate"
               onClick={() => handleSort("deliveryDate")}
               data-testid="header-delivery-date"
@@ -108,6 +109,8 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, userEmail }
         <TableBody>
           {sortedTasks.map((task) => {
             const overdue = isOverdue(task);
+            const editable = canEditTask(task, permissionUser);
+            const statusEditable = canChangeStatus(task, permissionUser);
             return (
               <TableRow
                 key={task.id}
@@ -154,8 +157,8 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, userEmail }
                 </TableCell>
                 <TableCell>{task.assignee}</TableCell>
                 <TableCell>
-                  {task.workType === 'shoot' ? 'Γύρισμα' : 
-                   task.workType === 'edit' ? 'Μοντάζ' : 
+                  {task.workType === 'shoot' ? 'Γύρισμα' :
+                   task.workType === 'edit' ? 'Μοντάζ' :
                    'Φόρτωμα'}
                 </TableCell>
                 <TableCell>
@@ -164,9 +167,11 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, userEmail }
                     onValueChange={(value) =>
                       onUpdateStatus(task.id, value as "todo" | "inprogress" | "done")
                     }
+                    disabled={!statusEditable}
                   >
-                    <SelectTrigger 
-                      className="w-[140px] h-8 border-0 focus:ring-0 px-0"
+                    <SelectTrigger
+                      className="w-[140px] h-8 border-0 focus:ring-0 px-0 disabled:opacity-100 disabled:cursor-default"
+                      title={statusEditable ? undefined : "Μόνο ο υπεύθυνος αλλάζει την κατάσταση"}
                       data-testid={`select-status-${task.id}`}
                     >
                       <SelectValue asChild>
@@ -196,17 +201,28 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, userEmail }
                       size="icon"
                       onClick={() => onEdit(task)}
                       data-testid={`button-edit-${task.id}`}
-                      aria-label="Edit task"
+                      aria-label={editable ? "Edit task" : "View task"}
                     >
-                      <Pencil className="w-4 h-4" />
+                      {editable ? <Pencil className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </Button>
+                    {userIsAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onHistory(task)}
+                        data-testid={`button-history-${task.id}`}
+                        aria-label="Task history"
+                      >
+                        <History className="w-4 h-4" />
+                      </Button>
+                    )}
                     {userIsAdmin && (
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => onDelete(task.id)}
                         data-testid={`button-delete-${task.id}`}
-                        aria-label="Delete task"
+                        aria-label="Move task to trash"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

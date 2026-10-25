@@ -1,12 +1,44 @@
 ﻿import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertTaskSchema, studioSettingsSchema } from "@shared/schema";
+import {
+  ADMIN_ONLY_TASK_FIELDS,
+  insertTaskSchema,
+  studioSettingsSchema,
+  type Task,
+  type TaskChange,
+  type TaskHistoryEntry,
+} from "@shared/schema";
+import { canChangeStatus, canEditTask } from "@shared/permissions";
 import { z } from "zod";
-import { isAdmin } from "@shared/admin";
 import { parseWeeklyScheduleToTasks } from "./openai";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, type Actor } from "./replitAuth";
 import { isFirebaseAdminInitialized } from "./firebaseAdmin";
+
+// Treat missing, empty and null as the same "no value"
+function normalize(value: unknown) {
+  return value === undefined || value === "" ? null : value;
+}
+
+function diffTask(before: Task, updates: Record<string, unknown>): TaskChange[] {
+  return Object.entries(updates)
+    .filter(([field, to]) => normalize(to) !== normalize((before as any)[field]))
+    .map(([field, to]) => ({ field, from: normalize((before as any)[field]), to: normalize(to) }));
+}
+
+async function recordHistory(
+  taskId: string,
+  actor: Actor,
+  action: TaskHistoryEntry["action"],
+  changes: TaskChange[] = [],
+) {
+  try {
+    await storage.addHistory(taskId, { action, byEmail: actor.email, byName: actor.name, changes });
+  } catch (error) {
+    // Never fail the user's action because the history write failed
+    console.error("Error recording task history:", error);
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Firebase auth (via ./replitAuth middleware) — always enabled
@@ -38,11 +70,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.uid;
-      if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-      const user = await storage.getUser(userId);
-      res.json(user);
+      const actor: Actor = req.actor;
+      const user = await storage.getUser(actor.uid);
+      res.json({ ...user, isAdmin: actor.isAdmin, memberName: actor.memberName ?? null });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -61,12 +91,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/settings", isAuthenticated, async (req: any, res) => {
     try {
-      if (!isAdmin(req.user?.email)) {
+      const actor: Actor = req.actor;
+      if (!actor.isAdmin) {
         return res.status(403).json({ message: "Only admin can change studio settings" });
       }
       const settings = studioSettingsSchema.parse(req.body);
-      const unique = (list: string[]) => Array.from(new Set(list));
-      res.json(await storage.saveSettings({ team: unique(settings.team), series: unique(settings.series) }));
+
+      const names = settings.team.map((m) => m.name);
+      const emails = settings.team.map((m) => m.email).filter(Boolean);
+      if (new Set(names).size !== names.length || new Set(emails).size !== emails.length) {
+        return res.status(400).json({ message: "Each team member needs a unique name and email" });
+      }
+
+      res.json(
+        await storage.saveSettings({
+          team: settings.team,
+          series: Array.from(new Set(settings.series)),
+        }),
+      );
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
@@ -87,6 +129,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/tasks/trash", isAuthenticated, async (req: any, res) => {
+    try {
+      const actor: Actor = req.actor;
+      if (!actor.isAdmin) {
+        return res.status(403).json({ message: "Only admin can view the trash" });
+      }
+      res.json(await storage.getDeletedTasks());
+    } catch (error) {
+      console.error("Error fetching trash:", error);
+      res.status(500).json({ message: "Failed to fetch trash" });
+    }
+  });
+
   app.get("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
     try {
       const task = await storage.getTask(req.params.id);
@@ -102,22 +157,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/tasks/:id/history", isAuthenticated, async (req: any, res) => {
+    try {
+      const actor: Actor = req.actor;
+      if (!actor.isAdmin) {
+        return res.status(403).json({ message: "Only admin can view task history" });
+      }
+      res.json(await storage.getHistory(req.params.id));
+    } catch (error) {
+      console.error("Error fetching task history:", error);
+      res.status(500).json({ message: "Failed to fetch task history" });
+    }
+  });
+
   app.post("/api/tasks", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.uid;
-      const userEmail = req.user?.email;
-
-      if (!userId || !userEmail) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const actor: Actor = req.actor;
 
       const validatedData = insertTaskSchema.parse({
         ...req.body,
-        userId,
+        userId: actor.uid,
       });
 
       // Check if non-admin user is trying to set assignee, shootTime, deliveryDate, or deliveryTime
-      if (!isAdmin(userEmail)) {
+      if (!actor.isAdmin) {
         if (req.body.assignee || req.body.shootTime || req.body.deliveryDate || req.body.deliveryTime) {
           return res.status(403).json({
             message: "Only admin can set assignee, production time, delivery date, and delivery time",
@@ -126,6 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const task = await storage.createTask(validatedData);
+      await recordHistory(task.id, actor, "create");
       res.status(201).json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -141,28 +205,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userEmail = req.user?.email;
-      if (!userEmail) return res.status(401).json({ message: "Unauthorized" });
-
-      // Check if non-admin user is trying to update assignee, shootTime, deliveryDate, or deliveryTime
-      if (!isAdmin(userEmail)) {
-        if ("assignee" in req.body || "shootTime" in req.body || "deliveryDate" in req.body || "deliveryTime" in req.body) {
-          return res.status(403).json({
-            message: "Only admin can modify assignee, production time, delivery date, and delivery time",
-          });
-        }
-      }
+      const actor: Actor = req.actor;
 
       // Validate update payload
       const updateSchema = insertTaskSchema.partial().omit({ userId: true });
       const validatedUpdates = updateSchema.parse(req.body);
 
-      const task = await storage.updateTask(req.params.id, validatedUpdates);
+      const existing = await storage.getTask(req.params.id);
+      if (!existing || existing.deletedAt) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Only fields whose value actually changes count; forms resend unchanged values
+      const changes = diffTask(existing, validatedUpdates);
+      if (changes.length === 0) {
+        return res.json(existing);
+      }
+
+      if (!actor.isAdmin) {
+        const changed = new Set(changes.map((c) => c.field));
+
+        if (ADMIN_ONLY_TASK_FIELDS.some((field) => changed.has(field))) {
+          return res.status(403).json({
+            message: "Only admin can change assignee, production date/time and delivery date/time",
+          });
+        }
+        if (changed.has("status") && !canChangeStatus(existing, actor)) {
+          return res.status(403).json({ message: "Only the assignee or admin can change the status" });
+        }
+        if (changes.some((c) => c.field !== "status") && !canEditTask(existing, actor)) {
+          return res.status(403).json({ message: "You can only edit your own tasks" });
+        }
+      }
+
+      const updates = Object.fromEntries(changes.map((c) => [c.field, (validatedUpdates as any)[c.field]]));
+      const task = await storage.updateTask(req.params.id, updates);
 
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
 
+      await recordHistory(task.id, actor, "update", changes);
       res.json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -176,24 +259,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Moves the task to the trash; it can be restored by the admin
   app.delete("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userEmail = req.user?.email;
-      if (!userEmail) return res.status(401).json({ message: "Unauthorized" });
+      const actor: Actor = req.actor;
 
       // Check if user is admin - only admin can delete tasks
-      if (!isAdmin(userEmail)) {
+      if (!actor.isAdmin) {
         return res.status(403).json({
           message: "Only admin can delete tasks",
         });
       }
 
-      const deleted = await storage.deleteTask(req.params.id);
+      const deleted = await storage.trashTask(req.params.id, actor.email);
 
       if (!deleted) {
         return res.status(404).json({ message: "Task not found" });
       }
 
+      await recordHistory(req.params.id, actor, "delete");
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting task:", error);
@@ -201,15 +285,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/tasks/:id/restore", isAuthenticated, async (req: any, res) => {
+    try {
+      const actor: Actor = req.actor;
+      if (!actor.isAdmin) {
+        return res.status(403).json({ message: "Only admin can restore tasks" });
+      }
+
+      const task = await storage.restoreTask(req.params.id);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      await recordHistory(task.id, actor, "restore");
+      res.json(task);
+    } catch (error) {
+      console.error("Error restoring task:", error);
+      res.status(500).json({ message: "Failed to restore task" });
+    }
+  });
+
   app.post("/api/tasks/ai-generate", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.uid;
-      const userEmail = req.user?.email;
+      const actor: Actor = req.actor;
       const { scheduleText } = req.body;
-
-      if (!userId || !userEmail) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
 
       if (!scheduleText || typeof scheduleText !== "string") {
         return res.status(400).json({ message: "scheduleText is required" });
@@ -217,6 +316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const settings = await storage.getSettings();
       const parsedTasks = await parseWeeklyScheduleToTasks(scheduleText, settings);
+      const teamNames = settings.team.map((m) => m.name);
 
       const createdTasks = [];
       for (const parsedTask of parsedTasks) {
@@ -225,13 +325,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           workType: parsedTask.workType,
           status: "todo",
           format: parsedTask.format === "podcast" ? "podcast" : "reel",
-          userId,
+          userId: actor.uid,
         };
         if (parsedTask.series && settings.series.includes(parsedTask.series)) taskData.series = parsedTask.series;
         if (parsedTask.guest) taskData.guest = parsedTask.guest;
 
-        if (isAdmin(userEmail)) {
-          if (parsedTask.assignee) taskData.assignee = parsedTask.assignee;
+        if (actor.isAdmin) {
+          if (parsedTask.assignee && teamNames.includes(parsedTask.assignee)) taskData.assignee = parsedTask.assignee;
           if (parsedTask.shootDate) taskData.shootDate = parsedTask.shootDate;
           if (parsedTask.shootTime) taskData.shootTime = parsedTask.shootTime;
           if (parsedTask.deliveryDate) taskData.deliveryDate = parsedTask.deliveryDate;
@@ -239,6 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const validatedData = insertTaskSchema.parse(taskData);
         const createdTask = await storage.createTask(validatedData);
+        await recordHistory(createdTask.id, actor, "create");
         createdTasks.push(createdTask);
       }
 

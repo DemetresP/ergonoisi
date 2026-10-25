@@ -42,7 +42,7 @@ export async function parseWeeklyScheduleToTasks(
     const currentDate = now.toISOString().split('T')[0];
     const dayNames = ['Κυριακή', 'Δευτέρα', 'Τρίτη', 'Τετάρτη', 'Πέμπτη', 'Παρασκευή', 'Σάββατο'];
     const currentDayName = dayNames[now.getDay()];
-    const teamList = settings.team.length ? settings.team.map((m) => `"${m}"`).join(", ") : "(none defined)";
+    const teamList = settings.team.length ? settings.team.map((m) => `"${m.name}"`).join(", ") : "(none defined)";
     const seriesList = settings.series.length ? settings.series.map((s) => `"${s}"`).join(", ") : "(none defined)";
 
     const response = await openai.chat.completions.create({

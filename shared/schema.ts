@@ -45,9 +45,30 @@ export const taskSchema = insertTaskSchema.extend({
   id: z.string(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
+  // Set when the admin moves the task to the trash; restorable
+  deletedAt: z.string().nullable().optional(),
+  deletedBy: z.string().nullable().optional(),
 });
 
 export type Task = z.infer<typeof taskSchema>;
+
+// Fields only the admin may change on an existing task
+export const ADMIN_ONLY_TASK_FIELDS = ["assignee", "shootDate", "shootTime", "deliveryDate", "deliveryTime"] as const;
+
+export interface TaskChange {
+  field: string;
+  from: unknown;
+  to: unknown;
+}
+
+export interface TaskHistoryEntry {
+  id: string;
+  action: "create" | "update" | "delete" | "restore";
+  at: string;
+  byEmail: string;
+  byName: string;
+  changes: TaskChange[];
+}
 export type TaskFormat = Task["format"];
 
 export const FORMAT_LABELS: Record<TaskFormat, string> = {
@@ -55,10 +76,24 @@ export const FORMAT_LABELS: Record<TaskFormat, string> = {
   podcast: "Podcast",
 };
 
+// A team member's email is what lets them sign in and ties them to their tasks
+export const teamMemberSchema = z.object({
+  name: z.string().trim().min(1),
+  email: z.union([z.string().trim().toLowerCase().email(), z.literal("")]).default(""),
+});
+
+export type TeamMember = z.infer<typeof teamMemberSchema>;
+
 // Studio lists managed by the admin from the app (team members and series)
 export const studioSettingsSchema = z.object({
-  team: z.array(z.string().trim().min(1)).default([]),
+  team: z.array(teamMemberSchema).default([]),
   series: z.array(z.string().trim().min(1)).default([]),
 });
 
 export type StudioSettings = z.infer<typeof studioSettingsSchema>;
+
+export function findMemberByEmail(team: TeamMember[], email: string | null | undefined) {
+  if (!email) return undefined;
+  const normalized = email.toLowerCase();
+  return team.find((member) => member.email === normalized);
+}

@@ -7,11 +7,12 @@ import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
+import NoAccess from "@/pages/no-access";
 import { useEffect } from "react";
 import { startIdTokenSync } from "@/lib/firebaseAuth";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, noAccessEmail } = useAuth();
 
   // Show a minimal loading state while checking auth
   if (isLoading) {
@@ -23,6 +24,10 @@ function Router() {
         </div>
       </div>
     );
+  }
+
+  if (noAccessEmail !== undefined) {
+    return <NoAccess email={noAccessEmail} />;
   }
 
   return (

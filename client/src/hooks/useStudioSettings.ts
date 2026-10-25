@@ -7,8 +7,11 @@ export function useStudioSettings() {
     staleTime: 60000,
   });
 
+  const team = data?.team ?? [];
+
   return {
-    team: data?.team ?? [],
+    team,
+    teamNames: team.map((member) => member.name),
     series: data?.series ?? [],
   };
 }

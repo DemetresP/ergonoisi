@@ -37,7 +37,7 @@ interface TaskFormProps {
 
 export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = [] }: TaskFormProps) {
   const userIsAdmin = isAdmin(userEmail);
-  const { team, series: seriesList } = useStudioSettings();
+  const { teamNames: team, series: seriesList } = useStudioSettings();
 
   const [title, setTitle] = useState("");
   const [shootDate, setShootDate] = useState("");

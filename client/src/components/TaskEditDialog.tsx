@@ -1,6 +1,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -30,6 +31,8 @@ interface TaskEditDialogProps {
   isPending?: boolean;
   userEmail?: string | null;
   guestSuggestions?: string[];
+  // Shown to team members who may look at the task but not change it
+  readOnly?: boolean;
 }
 
 // Keep a value that is no longer in the admin's list selectable (e.g. older tasks)
@@ -45,8 +48,9 @@ export function TaskEditDialog({
   isPending,
   userEmail,
   guestSuggestions = [],
+  readOnly = false,
 }: TaskEditDialogProps) {
-  const { team, series: seriesList } = useStudioSettings();
+  const { teamNames: team, series: seriesList } = useStudioSettings();
   const [title, setTitle] = useState("");
   const [shootDate, setShootDate] = useState("");
   const [shootTime, setShootTime] = useState("");
@@ -84,7 +88,6 @@ export function TaskEditDialog({
     // Build update data, excluding restricted fields for non-admin users
     const updates: any = {
       title,
-      shootDate: shootDate || null,
       notes: notes || null,
       workType,
       format,
@@ -92,9 +95,10 @@ export function TaskEditDialog({
       guest: guest.trim() || null,
     };
 
-    // Only include assignee, shootTime, deliveryDate, and deliveryTime if user is admin
+    // Only include assignee, production date/time and delivery date/time if user is admin
     if (userIsAdmin) {
       if (assignee) updates.assignee = assignee;
+      updates.shootDate = shootDate || null;
       updates.shootTime = shootTime || null;
       updates.deliveryDate = deliveryDate || null;
       updates.deliveryTime = deliveryTime || null;
@@ -107,10 +111,14 @@ export function TaskEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto" data-testid="dialog-edit-task">
         <DialogHeader>
-          <DialogTitle>Edit Task</DialogTitle>
+          <DialogTitle>{readOnly ? "Task" : "Edit Task"}</DialogTitle>
+          {readOnly && (
+            <DialogDescription>Μόνο ο υπεύθυνος ή ο διαχειριστής αλλάζει αυτή την εργασία.</DialogDescription>
+          )}
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-6 py-4">
+            <fieldset disabled={readOnly} className="grid gap-6 min-w-0">
             <div className="grid gap-2">
               <Label htmlFor="edit-title" className="text-sm font-semibold">
                 Project Title
@@ -188,7 +196,7 @@ export function TaskEditDialog({
               <div className="grid gap-2">
                 <Label htmlFor="edit-shootDate" className="text-sm font-semibold">
                   <Calendar className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-                  Production Date
+                  Production Date {!userIsAdmin && <span className="text-xs text-muted-foreground">(Admin only)</span>}
                 </Label>
                 <Input
                   id="edit-shootDate"
@@ -197,6 +205,7 @@ export function TaskEditDialog({
                   onChange={(e) => setShootDate(e.target.value)}
                   data-testid="input-edit-shoot-date"
                   className="h-10 font-mono text-sm"
+                  disabled={!userIsAdmin}
                 />
               </div>
 
@@ -308,6 +317,7 @@ export function TaskEditDialog({
                 </Select>
               </div>
             </div>
+            </fieldset>
 
             <div className="flex justify-end gap-3 pt-2">
               <Button
@@ -316,15 +326,17 @@ export function TaskEditDialog({
                 onClick={() => onOpenChange(false)}
                 data-testid="button-cancel-edit"
               >
-                Cancel
+                {readOnly ? "Close" : "Cancel"}
               </Button>
-              <Button
-                type="submit"
-                disabled={isPending}
-                data-testid="button-save-edit"
-              >
-                Save Changes
-              </Button>
+              {!readOnly && (
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  data-testid="button-save-edit"
+                >
+                  Save Changes
+                </Button>
+              )}
             </div>
           </div>
         </form>

@@ -5,6 +5,8 @@ import {
   type Task,
   type InsertTask,
   type StudioSettings,
+  type TaskHistoryEntry,
+  type TeamMember,
 } from "@shared/schema";
 
 const DEFAULT_SETTINGS: StudioSettings = { team: [], series: ["Οικονομικό"] };
@@ -25,10 +27,15 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
 
   getTasks(): Promise<Task[]>;
+  getDeletedTasks(): Promise<Task[]>;
   getTask(id: string): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, updates: Partial<Task>): Promise<Task | undefined>;
-  deleteTask(id: string): Promise<boolean>;
+  trashTask(id: string, byEmail: string): Promise<boolean>;
+  restoreTask(id: string): Promise<Task | undefined>;
+
+  addHistory(taskId: string, entry: Omit<TaskHistoryEntry, "id" | "at">): Promise<void>;
+  getHistory(taskId: string): Promise<TaskHistoryEntry[]>;
 
   getSettings(): Promise<StudioSettings>;
   saveSettings(settings: StudioSettings): Promise<StudioSettings>;
@@ -75,7 +82,13 @@ export class FirestoreStorage implements IStorage {
   async getTasks(): Promise<Task[]> {
     const db = getDb();
     const snap = await db.collection("tasks").orderBy("createdAt").get();
-    return snap.docs.map((d) => toTask(d)!).filter(Boolean);
+    return snap.docs.map((d) => toTask(d)!).filter((task) => task && !task.deletedAt);
+  }
+
+  async getDeletedTasks(): Promise<Task[]> {
+    const db = getDb();
+    const snap = await db.collection("tasks").orderBy("createdAt").get();
+    return snap.docs.map((d) => toTask(d)!).filter((task) => task && task.deletedAt);
   }
 
   async getTask(id: string): Promise<Task | undefined> {
@@ -107,28 +120,56 @@ export class FirestoreStorage implements IStorage {
     return toTask(updated);
   }
 
-  async deleteTask(id: string): Promise<boolean> {
-    const db = getDb();
-    const ref = db.collection("tasks").doc(id);
-    const doc = await ref.get();
-    if (!doc.exists) return false;
-    await ref.delete();
-    return true;
+  // Tasks are never hard-deleted from the app; the admin can restore them from the trash
+  async trashTask(id: string, byEmail: string): Promise<boolean> {
+    const updated = await this.updateTask(id, { deletedAt: new Date().toISOString(), deletedBy: byEmail });
+    return Boolean(updated);
   }
 
+  async restoreTask(id: string): Promise<Task | undefined> {
+    return this.updateTask(id, { deletedAt: null, deletedBy: null });
+  }
+
+  async addHistory(taskId: string, entry: Omit<TaskHistoryEntry, "id" | "at">): Promise<void> {
+    const db = getDb();
+    await db
+      .collection("tasks")
+      .doc(taskId)
+      .collection("history")
+      .add({ ...entry, at: new Date().toISOString() });
+  }
+
+  async getHistory(taskId: string): Promise<TaskHistoryEntry[]> {
+    const db = getDb();
+    const snap = await db.collection("tasks").doc(taskId).collection("history").orderBy("at", "desc").get();
+    return snap.docs.map((d) => toPlain<TaskHistoryEntry>(d)!);
+  }
+
+  // Settings are read on every authenticated request (access check), so keep a short cache
+  private settingsCache: { value: StudioSettings; expires: number } | undefined;
+
   async getSettings(): Promise<StudioSettings> {
+    if (this.settingsCache && this.settingsCache.expires > Date.now()) {
+      return this.settingsCache.value;
+    }
     const db = getDb();
     const doc = await db.collection("settings").doc("studio").get();
     const data = doc.exists ? doc.data() : undefined;
-    return {
-      team: data?.team ?? DEFAULT_SETTINGS.team,
+    const value: StudioSettings = {
+      // Team was briefly stored as plain names; those members have no email yet
+      team: (data?.team ?? DEFAULT_SETTINGS.team).map((member: string | TeamMember) =>
+        typeof member === "string" ? { name: member, email: "" } : member,
+      ),
       series: data?.series ?? DEFAULT_SETTINGS.series,
     };
+    this.settingsCache = { value, expires: Date.now() + 30_000 };
+    return value;
   }
 
   async saveSettings(settings: StudioSettings): Promise<StudioSettings> {
     const db = getDb();
     await db.collection("settings").doc("studio").set(settings);
+    this.settingsCache = undefined;
     return settings;
   }
 }

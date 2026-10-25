@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Download, Upload, LogOut, LayoutList, CalendarDays, Sparkles, Settings } from "lucide-react";
+import { Calendar, Download, Upload, LogOut, LayoutList, CalendarDays, Sparkles, Settings, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { TaskForm } from "@/components/TaskForm";
 import { TaskTable } from "@/components/TaskTable";
@@ -30,8 +30,10 @@ import { WorkloadOverview } from "@/components/WorkloadOverview";
 import { TaskEditDialog } from "@/components/TaskEditDialog";
 import { CalendarView } from "@/components/CalendarView";
 import { StudioSettingsDialog } from "@/components/StudioSettingsDialog";
+import { TaskHistoryDialog } from "@/components/TaskHistoryDialog";
+import { TrashDialog } from "@/components/TrashDialog";
 import { FORMAT_LABELS, type Task } from "@shared/schema";
-import { isAdmin } from "@shared/admin";
+import { canEditTask, type TaskPermissionUser } from "@shared/permissions";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { firebaseLogout } from "@/lib/firebaseAuth";
 import { useStudioSettings } from "@/hooks/useStudioSettings";
@@ -46,6 +48,8 @@ export default function Dashboard() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const [historyTask, setHistoryTask] = useState<Task | null>(null);
   const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
   const [aiScheduleText, setAiScheduleText] = useState("");
   const [formatFilter, setFormatFilter] = useState(ALL);
@@ -64,6 +68,12 @@ export default function Dashboard() {
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
   });
+
+  const permissionUser: TaskPermissionUser = {
+    uid: user?.id ?? "",
+    isAdmin: Boolean(user?.isAdmin),
+    memberName: user?.memberName ?? undefined,
+  };
 
   const filteredTasks = tasks.filter(
     (task) =>
@@ -133,7 +143,9 @@ export default function Dashboard() {
       }
       toast({
         title: "Error",
-        description: "Failed to update task. Please try again.",
+        description: error.message.startsWith("403")
+          ? "Δεν έχεις δικαίωμα για αυτή την αλλαγή."
+          : "Failed to update task. Please try again.",
         variant: "destructive",
       });
     },
@@ -146,8 +158,8 @@ export default function Dashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({
-        title: "Task deleted",
-        description: "The task has been removed.",
+        title: "Στον κάδο",
+        description: "Η εργασία μεταφέρθηκε στον κάδο και μπορεί να επανέλθει.",
       });
     },
     onError: (error: any) => {
@@ -162,7 +174,7 @@ export default function Dashboard() {
         }, 500);
         return;
       }
-      
+
       if (error.message?.includes("404") || error.message?.includes("not found")) {
         queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
         toast({
@@ -171,7 +183,7 @@ export default function Dashboard() {
         });
         return;
       }
-      
+
       toast({
         title: "Error",
         description: "Failed to delete task. Please try again.",
@@ -205,10 +217,10 @@ export default function Dashboard() {
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Tasks");
-    
+
     const fileName = `athenai-tasks-${new Date().toISOString().split("T")[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
-    
+
     toast({
       title: "Export successful",
       description: "Your tasks have been exported to Excel.",
@@ -360,15 +372,25 @@ export default function Dashboard() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {isAdmin(user?.email) && (
-                <DropdownMenuItem
-                  onSelect={() => setIsSettingsOpen(true)}
-                  className="cursor-pointer"
-                  data-testid="button-studio-settings"
-                >
-                  <Settings className="mr-2 h-4 w-4" />
-                  Ρυθμίσεις studio
-                </DropdownMenuItem>
+              {user?.isAdmin && (
+                <>
+                  <DropdownMenuItem
+                    onSelect={() => setIsSettingsOpen(true)}
+                    className="cursor-pointer"
+                    data-testid="button-studio-settings"
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Ρυθμίσεις studio
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => setIsTrashOpen(true)}
+                    className="cursor-pointer"
+                    data-testid="button-trash"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Κάδος
+                  </DropdownMenuItem>
+                </>
               )}
               <DropdownMenuItem
                 onSelect={(e) => {
@@ -513,7 +535,8 @@ export default function Dashboard() {
                     setIsEditDialogOpen(true);
                   }}
                   onDelete={(taskId) => deleteTask.mutate(taskId)}
-                  userEmail={user?.email}
+                  onHistory={setHistoryTask}
+                  permissionUser={permissionUser}
                 />
               ) : (
                 <CalendarView
@@ -546,9 +569,12 @@ export default function Dashboard() {
         isPending={updateTask.isPending}
         userEmail={user?.email}
         guestSuggestions={guestSuggestions}
+        readOnly={editingTask ? !canEditTask(editingTask, permissionUser) : false}
       />
 
       <StudioSettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+      <TrashDialog open={isTrashOpen} onOpenChange={setIsTrashOpen} />
+      <TaskHistoryDialog task={historyTask} onOpenChange={(open) => !open && setHistoryTask(null)} />
     </div>
   );
 }

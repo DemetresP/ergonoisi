@@ -15,6 +15,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useStudioSettings } from "@/hooks/useStudioSettings";
 import { getSeriesColor } from "@/lib/studio";
+import type { TeamMember } from "@shared/schema";
 
 interface StudioSettingsDialogProps {
   open: boolean;
@@ -86,10 +87,95 @@ function EditableList({ id, label, placeholder, items, onChange, itemClassName }
   );
 }
 
+interface TeamEditorProps {
+  team: TeamMember[];
+  onChange: (team: TeamMember[]) => void;
+}
+
+function TeamEditor({ team, onChange }: TeamEditorProps) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+
+  const add = () => {
+    const member = { name: name.trim(), email: email.trim().toLowerCase() };
+    if (!member.name || team.some((m) => m.name === member.name)) return;
+    onChange([...team, member]);
+    setName("");
+    setEmail("");
+  };
+
+  const update = (index: number, changes: Partial<TeamMember>) =>
+    onChange(team.map((member, i) => (i === index ? { ...member, ...changes } : member)));
+
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor="settings-team-name" className="text-sm font-semibold">
+        Ομάδα
+      </Label>
+      <p className="text-xs text-muted-foreground">
+        Μόνο όσοι έχουν email εδώ μπορούν να συνδεθούν. Το email πρέπει να είναι αυτό του λογαριασμού Google τους.
+      </p>
+      {team.length === 0 && <span className="text-sm text-muted-foreground">Κενή λίστα</span>}
+      {team.map((member, index) => (
+        <div key={index} className="flex gap-2">
+          <Input
+            value={member.name}
+            onChange={(e) => update(index, { name: e.target.value })}
+            aria-label="Όνομα"
+            className="h-9 w-[40%]"
+          />
+          <Input
+            type="email"
+            value={member.email}
+            placeholder="email@gmail.com"
+            onChange={(e) => update(index, { email: e.target.value })}
+            aria-label="Email"
+            className={`h-9 flex-1 ${member.email ? "" : "border-amber-500"}`}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => onChange(team.filter((_, i) => i !== index))}
+            aria-label={`Αφαίρεση ${member.name}`}
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      ))}
+      <div className="flex gap-2">
+        <Input
+          id="settings-team-name"
+          value={name}
+          placeholder="Όνομα"
+          onChange={(e) => setName(e.target.value)}
+          className="h-9 w-[40%]"
+        />
+        <Input
+          type="email"
+          value={email}
+          placeholder="email@gmail.com"
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              add();
+            }
+          }}
+          className="h-9 flex-1"
+        />
+        <Button type="button" variant="outline" size="icon" onClick={add} aria-label="Προσθήκη μέλους">
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function StudioSettingsDialog({ open, onOpenChange }: StudioSettingsDialogProps) {
   const { toast } = useToast();
   const settings = useStudioSettings();
-  const [team, setTeam] = useState<string[]>([]);
+  const [team, setTeam] = useState<TeamMember[]>([]);
   const [series, setSeries] = useState<string[]>([]);
 
   useEffect(() => {
@@ -103,7 +189,10 @@ export function StudioSettingsDialog({ open, onOpenChange }: StudioSettingsDialo
 
   const save = useMutation({
     mutationFn: async () => {
-      return await apiRequest("PUT", "/api/settings", { team, series });
+      const cleanTeam = team
+        .map((m) => ({ name: m.name.trim(), email: m.email.trim().toLowerCase() }))
+        .filter((m) => m.name);
+      return await apiRequest("PUT", "/api/settings", { team: cleanTeam, series });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
@@ -113,7 +202,7 @@ export function StudioSettingsDialog({ open, onOpenChange }: StudioSettingsDialo
     onError: () => {
       toast({
         title: "Σφάλμα",
-        description: "Δεν αποθηκεύτηκαν οι ρυθμίσεις. Δοκίμασε ξανά.",
+        description: "Δεν αποθηκεύτηκαν οι ρυθμίσεις. Έλεγξε ότι τα ονόματα και τα email είναι σωστά και μοναδικά.",
         variant: "destructive",
       });
     },
@@ -121,19 +210,13 @@ export function StudioSettingsDialog({ open, onOpenChange }: StudioSettingsDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]" data-testid="dialog-studio-settings">
+      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto" data-testid="dialog-studio-settings">
         <DialogHeader>
           <DialogTitle>Ρυθμίσεις studio</DialogTitle>
           <DialogDescription>Η ομάδα και οι σειρές που εμφανίζονται στις εργασίες.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-2">
-          <EditableList
-            id="settings-team"
-            label="Ομάδα"
-            placeholder="Όνομα μέλους"
-            items={team}
-            onChange={setTeam}
-          />
+          <TeamEditor team={team} onChange={setTeam} />
           <EditableList
             id="settings-series"
             label="Σειρές / Θεματικές"
