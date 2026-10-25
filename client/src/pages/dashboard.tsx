@@ -41,6 +41,8 @@ import { useStudioSettings } from "@/hooks/useStudioSettings";
 import { FORMATS, STATUS_LABELS, getWorkTypeLabel } from "@/lib/studio";
 
 const ALL = "__all__";
+// Calendar is the default view; the last choice is remembered per device
+const VIEW_MODE_KEY = "dashboardViewMode";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -51,7 +53,21 @@ export default function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [historyTask, setHistoryTask] = useState<Task | null>(null);
-  const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
+  const [viewMode, setViewModeState] = useState<"table" | "calendar">(() => {
+    try {
+      return localStorage.getItem(VIEW_MODE_KEY) === "table" ? "table" : "calendar";
+    } catch {
+      return "calendar";
+    }
+  });
+  const setViewMode = (mode: "table" | "calendar") => {
+    setViewModeState(mode);
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, mode);
+    } catch {
+      // ignore
+    }
+  };
   const [aiScheduleText, setAiScheduleText] = useState("");
   const [formatFilter, setFormatFilter] = useState(ALL);
   const [seriesFilter, setSeriesFilter] = useState(ALL);
