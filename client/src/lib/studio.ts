@@ -4,6 +4,7 @@ import type { TaskFormat } from "@shared/schema";
 
 export const WORK_TYPES = [
   { value: "shoot", label: "Γύρισμα" },
+  { value: "shoot_edit", label: "Γύρισμα & Μοντάζ" },
   { value: "edit", label: "Μοντάζ" },
   { value: "upload", label: "Φόρτωμα" },
 ] as const;

@@ -17,7 +17,7 @@ function getOpenAIClient(): OpenAI | null {
 
 export interface ParsedTask {
   title: string;
-  workType: 'shoot' | 'edit' | 'upload';
+  workType: 'shoot' | 'shoot_edit' | 'edit' | 'upload';
   format?: 'reel' | 'podcast';
   series?: string;
   guest?: string;
@@ -58,7 +58,7 @@ IMPORTANT: Today's date is ${currentDate} (${currentDayName}). Use this as refer
 
 Extract tasks with the following fields:
 - title: Short task name, e.g. "Reel Οικονομία - Μονεμβασιώτης"
-- workType: Must be one of "shoot", "edit", or "upload"
+- workType: Must be one of "shoot", "shoot_edit", "edit", or "upload"
 - format: Must be "reel" or "podcast"
 - series: One of the studio series: ${seriesList}. Omit if none matches.
 - guest: The journalist or guest featured (optional), e.g. "Μονεμβασιώτης"
@@ -78,6 +78,7 @@ Important:
 - Day names refer to THIS week or NEXT week (whichever makes more sense contextually)
 - If a day has already passed this week, assume it means next week
 - Determine workType from keywords like "γύρισμα"/"ηχογράφηση" (shoot), "μοντάζ" (edit), "ανέβασμα/φόρτωμα" (upload)
+- Use "shoot_edit" when the same person shoots and edits it as one job (e.g. "γύρισμα και μοντάζ", "γύρισμα + μοντάζ"); otherwise create separate shoot and edit tasks
 - Publishing keywords: "δημοσίευση", "ανεβαίνει", "βγαίνει", "παίζει", "προβολή", "live" → publishDate/publishTime (put publishing on the same task as the upload when both are mentioned)
 - Determine format from keywords: "podcast" → "podcast"; "reel", "ριλ" or anything else → "reel"
 - Match series loosely to the HuffPost section (e.g. "οικονομικό" or "οικονομία" → "Οικονομία", "αθλητικό" → "Αθλητικά", "πολιτικό" → "Πολιτική")

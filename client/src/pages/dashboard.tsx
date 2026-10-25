@@ -38,7 +38,7 @@ import { canEditTask, type TaskPermissionUser } from "@shared/permissions";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { firebaseLogout } from "@/lib/firebaseAuth";
 import { useStudioSettings } from "@/hooks/useStudioSettings";
-import { FORMATS, STATUS_LABELS, getWorkTypeLabel } from "@/lib/studio";
+import { FORMATS, STATUS_LABELS, getWorkTypeLabel, type WorkType } from "@/lib/studio";
 
 const ALL = "__all__";
 // Calendar is the default view; the last choice is remembered per device
@@ -267,8 +267,9 @@ export default function Dashboard() {
           return null;
         };
 
-        const parseWorkType = (value: string | null): "shoot" | "edit" | "upload" => {
+        const parseWorkType = (value: string | null): WorkType => {
           const str = (value || "").toLowerCase();
+          if ((str.includes("γύρισμα") && str.includes("μοντάζ")) || str === "shoot_edit") return "shoot_edit";
           if (str.includes("μοντάζ") || str === "edit") return "edit";
           if (str.includes("φόρτωμα") || str === "upload") return "upload";
           return "shoot";

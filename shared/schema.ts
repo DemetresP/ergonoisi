@@ -34,7 +34,7 @@ export const insertTaskSchema = z.object({
   publishTime: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   assignee: z.string().min(1).optional(),
-  workType: z.enum(["shoot", "edit", "upload"]).default("shoot"),
+  workType: z.enum(["shoot", "shoot_edit", "edit", "upload"]).default("shoot"),
   status: z.enum(["todo", "inprogress", "done"]).default("todo"),
   format: z.enum(["reel", "podcast"]).default("reel"),
   series: z.string().nullable().optional(),
