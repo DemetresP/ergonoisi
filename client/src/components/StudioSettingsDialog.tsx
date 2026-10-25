@@ -220,7 +220,7 @@ export function StudioSettingsDialog({ open, onOpenChange }: StudioSettingsDialo
           <EditableList
             id="settings-series"
             label="Σειρές / Θεματικές"
-            placeholder="π.χ. Οικονομικό"
+            placeholder="π.χ. Οικονομία"
             items={series}
             onChange={setSeries}
             itemClassName={(item) => getSeriesColor(item, series)}

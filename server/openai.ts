@@ -55,7 +55,7 @@ export async function parseWeeklyScheduleToTasks(
 IMPORTANT: Today's date is ${currentDate} (${currentDayName}). Use this as reference when calculating dates from day names.
 
 Extract tasks with the following fields:
-- title: Short task name, e.g. "Οικονομικό reel - Μονεμβασιώτης"
+- title: Short task name, e.g. "Reel Οικονομία - Μονεμβασιώτης"
 - workType: Must be one of "shoot", "edit", or "upload"
 - format: Must be "reel" or "podcast"
 - series: One of the studio series: ${seriesList}. Omit if none matches.
@@ -75,7 +75,7 @@ Important:
 - If a day has already passed this week, assume it means next week
 - Determine workType from keywords like "γύρισμα"/"ηχογράφηση" (shoot), "μοντάζ" (edit), "ανέβασμα/φόρτωμα" (upload)
 - Determine format from keywords: "podcast" → "podcast"; "reel", "ριλ" or anything else → "reel"
-- Match series loosely (e.g. "οικονομικό" matches "Οικονομικό")
+- Match series loosely to the HuffPost section (e.g. "οικονομικό" or "οικονομία" → "Οικονομία", "αθλητικό" → "Αθλητικά", "πολιτικό" → "Πολιτική")
 - "με <όνομα>" usually names the guest journalist unless the name is a team member, in which case it is the assignee
 - Use the nominative case for names (e.g. "με Μονεμβασιώτη" → "Μονεμβασιώτης")
 - Create separate tasks if multiple activities are mentioned`

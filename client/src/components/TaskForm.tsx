@@ -100,7 +100,7 @@ export function TaskForm({ onSubmit, isPending, userEmail, guestSuggestions = []
               </Label>
               <Input
                 id="title"
-                placeholder="π.χ. Οικονομικό reel - Μονεμβασιώτης"
+                placeholder="π.χ. Reel Οικονομία - Μονεμβασιώτης"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required

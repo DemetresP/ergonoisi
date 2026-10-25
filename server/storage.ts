@@ -9,7 +9,22 @@ import {
   type TeamMember,
 } from "@shared/schema";
 
-const DEFAULT_SETTINGS: StudioSettings = { team: [], series: ["Οικονομικό"] };
+// HuffPost Greece site sections, used as the studio's series
+const HUFFPOST_SECTIONS = [
+  "Κοινωνία",
+  "Πολιτική",
+  "Κόσμος",
+  "Οικονομία",
+  "Άποψη",
+  "Life",
+  "Entertainment",
+  "Πολιτισμός",
+  "Αθλητικά",
+];
+// Bumped when the stored series list must be replaced once (see migrateToHuffPostSeries)
+const SERIES_VERSION = 2;
+
+const DEFAULT_SETTINGS: StudioSettings = { team: [], series: HUFFPOST_SECTIONS };
 
 function getDb() {
   // Avoid crashing the whole server at startup if Firebase Admin isn't configured.
@@ -154,7 +169,13 @@ export class FirestoreStorage implements IStorage {
     }
     const db = getDb();
     const doc = await db.collection("settings").doc("studio").get();
-    const data = doc.exists ? doc.data() : undefined;
+    let data = doc.exists ? doc.data() : undefined;
+
+    if (data && data.seriesVersion !== SERIES_VERSION) {
+      await this.migrateToHuffPostSeries();
+      data = { ...data, series: HUFFPOST_SECTIONS, seriesVersion: SERIES_VERSION };
+    }
+
     const value: StudioSettings = {
       // Team was briefly stored as plain names; those members have no email yet
       team: (data?.team ?? DEFAULT_SETTINGS.team).map((member: string | TeamMember) =>
@@ -168,9 +189,24 @@ export class FirestoreStorage implements IStorage {
 
   async saveSettings(settings: StudioSettings): Promise<StudioSettings> {
     const db = getDb();
-    await db.collection("settings").doc("studio").set(settings);
+    await db.collection("settings").doc("studio").set({ ...settings, seriesVersion: SERIES_VERSION });
     this.settingsCache = undefined;
     return settings;
+  }
+
+  // One-off: the first custom series are replaced by the HuffPost sections,
+  // and tasks under the old "Οικονομικό" move to "Οικονομία"
+  private async migrateToHuffPostSeries() {
+    const db = getDb();
+    const renamed = await db.collection("tasks").where("series", "==", "Οικονομικό").get();
+    const batch = db.batch();
+    renamed.docs.forEach((d) => batch.update(d.ref, { series: "Οικονομία" }));
+    batch.set(
+      db.collection("settings").doc("studio"),
+      { series: HUFFPOST_SECTIONS, seriesVersion: SERIES_VERSION },
+      { merge: true },
+    );
+    await batch.commit();
   }
 }
 

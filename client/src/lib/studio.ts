@@ -30,6 +30,7 @@ const SERIES_COLORS = [
   "bg-orange-600 text-white border-orange-600",
   "bg-indigo-600 text-white border-indigo-600",
   "bg-fuchsia-600 text-white border-fuchsia-600",
+  "bg-lime-600 text-white border-lime-600",
 ];
 
 // Colour follows the series' position in the admin's list so it stays stable across views
