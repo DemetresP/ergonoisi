@@ -21,6 +21,7 @@ import { useState, useEffect } from "react";
 import type { Task, TaskFormat } from "@shared/schema";
 import { isAdmin } from "@shared/admin";
 import { useStudioSettings } from "@/hooks/useStudioSettings";
+import { ConfirmDeleteButton } from "./ConfirmDeleteButton";
 import { FORMATS, NO_SERIES, WORK_TYPES, type WorkType } from "@/lib/studio";
 
 interface TaskEditDialogProps {
@@ -33,6 +34,8 @@ interface TaskEditDialogProps {
   guestSuggestions?: string[];
   // Shown to team members who may look at the task but not change it
   readOnly?: boolean;
+  // Admin only: moves the task to the trash
+  onDelete?: (taskId: string) => void;
 }
 
 // Keep a value that is no longer in the admin's list selectable (e.g. older tasks)
@@ -49,6 +52,7 @@ export function TaskEditDialog({
   userEmail,
   guestSuggestions = [],
   readOnly = false,
+  onDelete,
 }: TaskEditDialogProps) {
   const { teamNames: team, series: seriesList } = useStudioSettings();
   const [title, setTitle] = useState("");
@@ -362,7 +366,19 @@ export function TaskEditDialog({
             </div>
             </fieldset>
 
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex flex-wrap justify-end gap-3 pt-2">
+              {onDelete && task && (
+                <div className="mr-auto">
+                  <ConfirmDeleteButton
+                    label="Διαγραφή"
+                    title="Διαγραφή εργασίας;"
+                    description={`Η «${task.title}» θα μεταφερθεί στον Κάδο. Μπορείς να την επαναφέρεις από εκεί.`}
+                    confirmLabel="Στον κάδο"
+                    onConfirm={() => onDelete(task.id)}
+                    testId="button-delete-in-dialog"
+                  />
+                </div>
+              )}
               <Button
                 type="button"
                 variant="outline"

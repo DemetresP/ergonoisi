@@ -12,6 +12,7 @@ import { RotateCcw } from "lucide-react";
 import type { Task } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmDeleteButton } from "./ConfirmDeleteButton";
 
 interface TrashDialogProps {
   open: boolean;
@@ -37,12 +38,25 @@ export function TrashDialog({ open, onOpenChange }: TrashDialogProps) {
     },
   });
 
+  const removeForever = useMutation({
+    mutationFn: async (id: string) => apiRequest("DELETE", `/api/tasks/${id}/permanent`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks/trash"] });
+      toast({ title: "Διαγράφηκε οριστικά", description: "Η εργασία σβήστηκε για πάντα." });
+    },
+    onError: () => {
+      toast({ title: "Σφάλμα", description: "Η οριστική διαγραφή απέτυχε.", variant: "destructive" });
+    },
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[560px] max-h-[85vh] overflow-y-auto" data-testid="dialog-trash">
         <DialogHeader>
           <DialogTitle>Κάδος</DialogTitle>
-          <DialogDescription>Οι διαγραμμένες εργασίες μένουν εδώ και μπορούν να επανέλθουν.</DialogDescription>
+          <DialogDescription>
+            Οι διαγραμμένες εργασίες μένουν εδώ και μπορούν να επανέλθουν. Το «Οριστικά» τις σβήνει για πάντα.
+          </DialogDescription>
         </DialogHeader>
         {isLoading ? (
           <p className="text-sm text-muted-foreground py-4">Φόρτωση...</p>
@@ -61,17 +75,29 @@ export function TrashDialog({ open, onOpenChange }: TrashDialogProps) {
                     </div>
                   )}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 shrink-0"
-                  onClick={() => restore.mutate(task.id)}
-                  disabled={restore.isPending}
-                  data-testid={`button-restore-${task.id}`}
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  Επαναφορά
-                </Button>
+                <div className="flex flex-wrap justify-end gap-2 shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => restore.mutate(task.id)}
+                    disabled={restore.isPending}
+                    data-testid={`button-restore-${task.id}`}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Επαναφορά
+                  </Button>
+                  <ConfirmDeleteButton
+                    size="sm"
+                    label="Οριστικά"
+                    title="Οριστική διαγραφή;"
+                    description={`Η «${task.title}» και το ιστορικό της θα σβηστούν για πάντα. Αυτό δεν αναιρείται.`}
+                    confirmLabel="Διαγραφή για πάντα"
+                    onConfirm={() => removeForever.mutate(task.id)}
+                    disabled={removeForever.isPending}
+                    testId={`button-delete-forever-${task.id}`}
+                  />
+                </div>
               </li>
             ))}
           </ul>

@@ -285,6 +285,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Permanent delete, only for tasks already in the trash
+  app.delete("/api/tasks/:id/permanent", isAuthenticated, async (req: any, res) => {
+    try {
+      const actor: Actor = req.actor;
+      if (!actor.isAdmin) {
+        return res.status(403).json({ message: "Only admin can permanently delete tasks" });
+      }
+
+      const task = await storage.getTask(req.params.id);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+      if (!task.deletedAt) {
+        return res.status(409).json({ message: "Move the task to the trash first" });
+      }
+
+      await storage.deleteTaskPermanently(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error permanently deleting task:", error);
+      res.status(500).json({ message: "Failed to permanently delete task" });
+    }
+  });
+
   app.post("/api/tasks/:id/restore", isAuthenticated, async (req: any, res) => {
     try {
       const actor: Actor = req.actor;

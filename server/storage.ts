@@ -48,6 +48,7 @@ export interface IStorage {
   updateTask(id: string, updates: Partial<Task>): Promise<Task | undefined>;
   trashTask(id: string, byEmail: string): Promise<boolean>;
   restoreTask(id: string): Promise<Task | undefined>;
+  deleteTaskPermanently(id: string): Promise<boolean>;
 
   addHistory(taskId: string, entry: Omit<TaskHistoryEntry, "id" | "at">): Promise<void>;
   getHistory(taskId: string): Promise<TaskHistoryEntry[]>;
@@ -139,6 +140,20 @@ export class FirestoreStorage implements IStorage {
   async trashTask(id: string, byEmail: string): Promise<boolean> {
     const updated = await this.updateTask(id, { deletedAt: new Date().toISOString(), deletedBy: byEmail });
     return Boolean(updated);
+  }
+
+  // Erases a task and its history for good; only used from the trash
+  async deleteTaskPermanently(id: string): Promise<boolean> {
+    const db = getDb();
+    const ref = db.collection("tasks").doc(id);
+    const doc = await ref.get();
+    if (!doc.exists) return false;
+    const history = await ref.collection("history").get();
+    const batch = db.batch();
+    history.docs.forEach((entry) => batch.delete(entry.ref));
+    batch.delete(ref);
+    await batch.commit();
+    return true;
   }
 
   async restoreTask(id: string): Promise<Task | undefined> {

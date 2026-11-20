@@ -23,7 +23,31 @@ import { canChangeStatus, canEditTask, type TaskPermissionUser } from "@shared/p
 import { useStudioSettings } from "@/hooks/useStudioSettings";
 import { FORMAT_BADGE_CLASSES, STATUS_LABELS, formatShortDate, getSeriesColor, getWorkTypeLabel } from "@/lib/studio";
 
-type SortField = "shootDate" | "deliveryDate" | "publishDate";
+type DateField = "shootDate" | "deliveryDate" | "publishDate";
+// "next" orders by each task's earliest date (shoot, delivery or publish)
+type SortField = DateField | "next";
+
+const TIME_FIELDS: Record<DateField, "shootTime" | "deliveryTime" | "publishTime"> = {
+  shootDate: "shootTime",
+  deliveryDate: "deliveryTime",
+  publishDate: "publishTime",
+};
+
+const NO_DATE = "9999-12-31 99:99";
+
+// "2026-11-20 09:00"-style key so date and time sort together as text
+function dateKey(task: Task, field: DateField) {
+  const date = task[field];
+  if (!date) return NO_DATE;
+  return `${date} ${task[TIME_FIELDS[field]] || "00:00"}`;
+}
+
+function sortKey(task: Task, field: SortField) {
+  if (field !== "next") return dateKey(task, field);
+  return (["shootDate", "deliveryDate", "publishDate"] as const)
+    .map((f) => dateKey(task, f))
+    .reduce((earliest, key) => (key < earliest ? key : earliest), NO_DATE);
+}
 
 interface TaskTableProps {
   tasks: Task[];
@@ -37,29 +61,34 @@ interface TaskTableProps {
 export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, permissionUser }: TaskTableProps) {
   const userIsAdmin = permissionUser.isAdmin;
   const { series: seriesList } = useStudioSettings();
-  const [sortField, setSortField] = useState<SortField | null>("deliveryDate");
+  const [sortField, setSortField] = useState<SortField>("next");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
+  // Tasks without the date always go last, whichever direction
   const sortedTasks = [...tasks].sort((a, b) => {
-    if (!sortField) return 0;
-
-    const aValue = a[sortField] || "9999-12-31";
-    const bValue = b[sortField] || "9999-12-31";
-
-    const comparison = aValue.localeCompare(bValue);
+    const aKey = sortKey(a, sortField);
+    const bKey = sortKey(b, sortField);
+    if (aKey === NO_DATE || bKey === NO_DATE) return aKey === bKey ? 0 : aKey === NO_DATE ? 1 : -1;
+    const comparison = aKey.localeCompare(bKey);
     return sortDirection === "asc" ? comparison : -comparison;
   });
+
+  const sortArrow = (field: SortField) => (sortField === field ? (sortDirection === "asc" ? " ↑" : " ↓") : "");
 
   const isOverdue = (task: Task) => {
     if (!task.deliveryDate || task.status === "done") return false;
     return new Date(task.deliveryDate) < new Date();
   };
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
+  // Click a date column: ascending, then descending, then back to the default chronological order
+  const handleSort = (field: DateField) => {
+    if (sortField !== field) {
       setSortField(field);
+      setSortDirection("asc");
+    } else if (sortDirection === "asc") {
+      setSortDirection("desc");
+    } else {
+      setSortField("next");
       setSortDirection("asc");
     }
   };
@@ -85,27 +114,32 @@ export function TaskTable({ tasks, onUpdateStatus, onEdit, onDelete, onHistory, 
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="font-semibold">Εργασία</TableHead>
+            <TableHead className="font-semibold">
+              Εργασία
+              {sortField === "next" && (
+                <span className="ml-1 text-xs font-normal text-muted-foreground">(χρονολογικά)</span>
+              )}
+            </TableHead>
             <TableHead
               className="font-semibold cursor-pointer hover-elevate"
               onClick={() => handleSort("shootDate")}
               data-testid="header-shoot-date"
             >
-              Γύρισμα
+              Γύρισμα{sortArrow("shootDate")}
             </TableHead>
             <TableHead
               className="font-semibold cursor-pointer hover-elevate"
               onClick={() => handleSort("deliveryDate")}
               data-testid="header-delivery-date"
             >
-              Παράδοση
+              Παράδοση{sortArrow("deliveryDate")}
             </TableHead>
             <TableHead
               className="font-semibold cursor-pointer hover-elevate"
               onClick={() => handleSort("publishDate")}
               data-testid="header-publish-date"
             >
-              Δημοσίευση
+              Δημοσίευση{sortArrow("publishDate")}
             </TableHead>
             <TableHead className="font-semibold">Σημειώσεις</TableHead>
             <TableHead className="font-semibold">Υπεύθυνος</TableHead>

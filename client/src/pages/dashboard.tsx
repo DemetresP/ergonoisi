@@ -174,6 +174,7 @@ export default function Dashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks/trash"] });
       toast({
         title: "Στον κάδο",
         description: "Η εργασία μεταφέρθηκε στον κάδο και μπορεί να επανέλθει.",
@@ -603,6 +604,15 @@ export default function Dashboard() {
         userEmail={user?.email}
         guestSuggestions={guestSuggestions}
         readOnly={editingTask ? !canEditTask(editingTask, permissionUser) : false}
+        onDelete={
+          user?.isAdmin
+            ? (taskId) => {
+                deleteTask.mutate(taskId);
+                setIsEditDialogOpen(false);
+                setEditingTask(null);
+              }
+            : undefined
+        }
       />
 
       <StudioSettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
